@@ -1,0 +1,5 @@
+node_modules/
+auth/
+status.json
+.env
+*.json.key
