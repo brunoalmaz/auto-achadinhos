@@ -1,0 +1,61 @@
+name: Disparo de achadinhos
+
+on:
+  schedule:
+    # Toda hora, no minuto 7 (UTC). O bot confere na aba Config se está
+    # no horário, no dia e se o sistema está ATIVO; fora disso sai em segundos.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: 'Disparar agora (ignora horário e meta do dia)'
+        type: boolean
+        default: false
+      teste:
+        description: 'Só simular (não envia nada, mostra as mensagens no log)'
+        type: boolean
+        default: false
+
+# Nunca roda duas conexões de WhatsApp ao mesmo tempo.
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+
+jobs:
+  disparo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Restaurar sessão do WhatsApp
+        uses: actions/cache/restore@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}
+          restore-keys: wa-auth-
+
+      - name: Rodar bot
+        run: node src/main.js
+        env:
+          MODO: envio
+          FORCAR: ${{ inputs.forcar && '1' || '' }}
+          DRY_RUN: ${{ inputs.teste && '1' || '' }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
+          PANEL_TOKEN: ${{ secrets.PANEL_TOKEN }}
+          PANEL_SENHA: ${{ secrets.PANEL_SENHA }}
+          PANEL_REPO: ${{ vars.PANEL_REPO }}
+
+      - name: Salvar sessão do WhatsApp
+        if: always() && hashFiles('auth/creds.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}-${{ github.run_attempt }}
