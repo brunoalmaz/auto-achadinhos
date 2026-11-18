@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Assopra Fitas · Central de Achadinhos</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23D4246C'/%3E%3Cpath d='M14 16h36a3 3 0 0 1 3 3v29a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V19a3 3 0 0 1 3-3z' fill='%231F1E1A'/%3E%3Crect x='18' y='22' width='28' height='14' rx='2' fill='%23EDECE8'/%3E%3Cpath d='M23 26h18M23 31h11' stroke='%23D4246C' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M18 42h4M26 42h4M34 42h4M42 42h4' stroke='%23EDECE8' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#1F1E1A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Playfair+Display:ital,wght@1,600;1,700;1,800;1,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mag:#D4246C; --mag2:#E8538F; --blush:#F2A7C3; --ink:#1F1E1A; --ink2:#292826; --paper:#EDECE8; --stone:#6A6964;
+  --fg:#F6F4EF; --mute:#B9B6AE; --line:rgba(255,255,255,.09);
+  --ok:#3DDC97; --warn:#FFB547; --bad:#FF5C6C; --info:#7FB7FF;
+  --serif:"Playfair Display",Georgia,serif; --sans:"DM Sans",system-ui,sans-serif; --mono:"DM Mono",ui-monospace,monospace;
+  --r:24px; --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--ink)}
+body{font-family:var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block}
+#grain{position:fixed;inset:-50%;width:200%;height:200%;z-index:60;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation:grain .9s steps(5) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
+#scan{position:fixed;inset:0;z-index:59;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);mix-blend-mode:multiply;opacity:.5}
+#static{position:fixed;inset:0;z-index:70;pointer-events:none;opacity:0;background:#000}
+#static canvas{width:100%;height:100%;display:block}
+
+main{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:28px 22px 120px}
+
+/* ---------- topo ---------- */
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--blush);display:flex;align-items:center;gap:10px}
+.rec{width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 12px var(--bad);animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+h1{font-family:var(--serif);font-style:italic;font-weight:900;font-size:clamp(44px,7vw,84px);line-height:.95;letter-spacing:-.02em;margin-top:10px}
+h1 .w{display:inline-block;will-change:transform}
+h1 em{color:var(--mag);font-style:italic}
+.subtitulo{color:var(--mute);margin-top:12px;font-size:15px}
+.subtitulo b{color:var(--fg);font-weight:600}
+.acoesTopo{display:flex;gap:8px;align-items:center}
+.tc{font-family:var(--mono);font-size:13px;color:var(--mute);border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:rgba(255,255,255,.03);letter-spacing:.08em}
+.tc b{color:var(--fg);font-weight:500}
+
+/* ---------- cards ---------- */
+.card{position:relative;background:linear-gradient(160deg,rgba(255,255,255,.065),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:var(--r);padding:20px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:hidden;transform-style:preserve-3d}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,-30%),rgba(212,36,108,.16),transparent 45%)}
+.rotulo{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.titulo2{font-family:var(--serif);font-style:italic;font-weight:800;font-size:26px;margin-bottom:14px;letter-spacing:-.01em}
+.titulo2 small{font-family:var(--mono);font-style:normal;font-weight:400;font-size:11px;letter-spacing:.2em;color:var(--mute);margin-left:10px;text-transform:uppercase;vertical-align:middle}
+.grade{display:grid;gap:14px;grid-template-columns:repeat(12,1fr);margin-bottom:14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media (max-width:900px){.c3,.c4,.c5{grid-column:span 6}.c6,.c7,.c8{grid-column:span 12}}
+@media (max-width:560px){.c3,.c4,.c5,.c6{grid-column:span 12}}
+.num{font-family:var(--serif);font-style:italic;font-weight:900;font-size:58px;line-height:1;margin-top:10px;letter-spacing:-.02em}
+.num small{font-size:.42em;color:var(--mute);font-weight:700}
+.sub{color:var(--mute);font-size:13px;margin-top:6px}
+
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.01em;margin-top:12px}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.pill.ok{color:var(--ok);background:rgba(61,220,151,.12)} .pill.ok::before{animation:pulse 1.6s infinite}
+.pill.erro{color:var(--bad);background:rgba(255,92,108,.12)}
+.pill.alerta{color:var(--warn);background:rgba(255,181,71,.12)} .pill.alerta::before{animation:blink 1s steps(2) infinite}
+.pill.info{color:var(--info);background:rgba(127,183,255,.12)}
+.pill.neutro{color:var(--mute);background:rgba(185,182,174,.1)}
+.pill.mini{margin-top:0;padding:4px 10px;font-size:12px}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.6)}100%{box-shadow:0 0 0 10px rgba(61,220,151,0)}}
+
+/* card WhatsApp "no ar" */
+.onair{position:absolute;right:16px;top:16px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;padding:4px 8px;border-radius:6px;border:1px solid var(--line);color:var(--mute)}
+.onair.on{color:#fff;background:var(--mag);border-color:var(--mag);box-shadow:0 0 18px rgba(212,36,108,.6)}
+
+/* fita cassete (enviados hoje) */
+.fita{display:flex;align-items:center;gap:16px;margin-top:8px}
+.fita svg{width:150px;flex:none;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))}
+.reel{transform-box:fill-box;transform-origin:center;animation:spin 3s linear infinite}
+.reel.lento{animation-duration:9s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.barra{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:12px}
+.barra i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--mag),var(--blush));transition:width 1.4s var(--ease)}
+
+/* ---------- TV do QR ---------- */
+#qrBox{display:none;margin-bottom:14px}
+.tv{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
+@media (max-width:700px){.tv{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.tela{position:relative;padding:18px;border-radius:34px;background:linear-gradient(145deg,#2c2a26,#151411);box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),0 20px 60px rgba(0,0,0,.5),0 0 80px rgba(212,36,108,.25)}
+.tela img{display:block;width:250px;max-width:70vw;border-radius:16px;background:#fff;padding:12px;animation:ligar .7s var(--ease) both}
+@keyframes ligar{0%{transform:scale(1,.01);filter:brightness(3)}60%{transform:scale(1,1.02)}100%{transform:none;filter:none}}
+.tela::after{content:"";position:absolute;inset:6px;border-radius:30px;pointer-events:none;box-shadow:inset 0 0 30px rgba(0,0,0,.6)}
+.passos{list-style:none;counter-reset:p;display:grid;gap:10px;margin-top:8px}
+.passos li{counter-increment:p;display:flex;gap:12px;align-items:baseline;color:var(--mute)}
+.passos li::before{content:counter(p);font-family:var(--serif);font-style:italic;font-weight:900;font-size:26px;color:var(--mag);min-width:18px}
+.passos b{color:var(--fg)}
+
+/* ---------- botões ---------- */
+.botoes{display:flex;flex-wrap:wrap;gap:12px}
+button{font:inherit;cursor:pointer;border:0;color:var(--fg)}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:15px;padding:14px 20px;border-radius:16px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);transition:transform .35s var(--ease),background .25s,border-color .25s,box-shadow .35s}
+.btn:hover:not(:disabled){border-color:rgba(242,167,195,.4);box-shadow:0 10px 30px rgba(212,36,108,.18)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn .ic{font-size:17px;width:22px;text-align:center}
+.btn.play{background:var(--mag);border-color:var(--mag);color:#fff;box-shadow:0 10px 30px rgba(212,36,108,.35)}
+.btn.play:hover:not(:disabled){background:var(--mag2)}
+.btn.pausa{background:transparent;color:var(--bad);border-color:rgba(255,92,108,.35)}
+.btn.retoma{background:var(--ok);border-color:var(--ok);color:#06170f}
+.btn .ripple{position:absolute;border-radius:50%;transform:scale(0);background:rgba(255,255,255,.35);pointer-events:none;animation:rip .7s var(--ease) forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+.btn.leve{padding:9px 13px;font-size:13px;font-weight:600;border-radius:12px;color:var(--mute)}
+.dica{font-size:13px;color:var(--mute);margin-top:14px;line-height:1.5}
+.dica b{color:var(--fg)}
+
+/* ---------- listas ---------- */
+.tabela{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-family:var(--mono);text-align:left;color:var(--mute);font-weight:400;font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.quando{font-family:var(--mono);font-size:12px;color:var(--mute);white-space:nowrap}
+td .det{color:var(--mute);font-size:12px;margin-top:4px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .nome{font-weight:600}
+.item .tipo{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);margin-left:8px;text-transform:uppercase}
+.item a{color:var(--fg);text-decoration:none;font-weight:600}
+.item a:hover{color:var(--blush)}
+.vazio{color:var(--mute);padding:6px 0}
+.rev{opacity:0}
+
+/* ---------- barra PLAY ---------- */
+.vhs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 22px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg);
+  background:linear-gradient(0deg,rgba(20,19,17,.92),rgba(20,19,17,.55));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.vhs .play{color:var(--mag);font-weight:500}
+.vhs .play.pause{color:var(--warn)}
+.vhs .meio{color:var(--mute);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.vhs .trilha{flex:1;max-width:280px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;position:relative;overflow:hidden}
+.vhs .trilha i{position:absolute;inset:0;width:30%;background:var(--mag);animation:trilha 2.6s linear infinite}
+@keyframes trilha{from{transform:translateX(-100%)}to{transform:translateX(340%)}}
+@media (max-width:640px){.vhs .trilha,.vhs .meio{display:none}}
+
+/* ---------- avisos e diálogo ---------- */
+.msg{position:fixed;left:50%;top:18px;z-index:80;transform:translate(-50%,-140%);transition:transform .6s var(--ease);max-width:min(560px,92vw);
+  padding:13px 18px;border-radius:16px;font-weight:600;font-size:14px;background:var(--ink2);border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.msg.show{transform:translate(-50%,0)}
+.msg.ok{border-color:rgba(61,220,151,.4)} .msg.erro{border-color:rgba(255,92,108,.5)} .msg.alerta{border-color:rgba(255,181,71,.5)}
+dialog{margin:auto;background:var(--ink2);color:var(--fg);border:1px solid var(--line);border-radius:28px;padding:28px;width:min(520px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog[open]{animation:sobe .6s var(--ease)}
+@keyframes sobe{from{opacity:0;transform:translateY(24px) scale(.97)}}
+dialog::backdrop{background:rgba(10,10,9,.72);backdrop-filter:blur(4px)}
+dialog h2{font-family:var(--serif);font-style:italic;font-weight:900;font-size:32px;letter-spacing:-.01em}
+label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:18px 0 8px}
+input{width:100%;font:inherit;padding:12px 14px;background:rgba(0,0,0,.25);color:var(--fg);border:1px solid var(--line);border-radius:14px;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus{border-color:var(--mag);box-shadow:0 0 0 4px rgba(212,36,108,.2)}
+
+body.sinal #scan,body.sinal #grain{display:none}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}#grain{display:none}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="scan"></div>
+<div id="grain"></div>
+<div id="static"><canvas id="staticCv" width="160" height="90"></canvas></div>
+<div class="msg" id="msg"></div>
+
+<main>
+  <div class="top">
+    <div>
+      <div class="eyebrow"><span class="rec"></span> CH 01 · Central de Achadinhos</div>
+      <h1 id="titulo">Assopra <em>Fitas</em></h1>
+      <div class="subtitulo" id="atualizado">Rebobinando a fita…</div>
+    </div>
+    <div class="acoesTopo">
+      <div class="tc" title="Agora">TC <b id="tc">00:00:00:00</b></div>
+      <button class="btn leve" id="btnAtualizar" title="Atualizar agora">↻</button>
+      <button class="btn leve" id="btnConfig">⚙ Ajustes</button>
+    </div>
+  </div>
+
+  <div class="grade">
+    <div class="card c3 rev">
+      <span class="onair" id="onair">OFF AIR</span>
+      <div class="rotulo">WhatsApp</div>
+      <div class="num" style="font-size:40px;margin-top:14px" id="whatsTxt">—</div>
+      <span class="pill neutro" id="stWhats">sem sinal</span>
+    </div>
+    <div class="card c3 rev">
+      <div class="rotulo">Agendamento</div>
+      <div class="num" style="font-size:40px;margin-top:14px" id="agendaTxt">—</div>
+      <span class="pill neutro" id="stAgenda">configure o token</span>
+      <div class="sub" id="stSistema"></div>
+    </div>
+    <div class="card c6 rev">
+      <div class="rotulo">Enviados hoje</div>
+      <div class="fita">
+        <svg viewBox="0 0 160 100" aria-hidden="true">
+          <rect x="2" y="2" width="156" height="96" rx="12" fill="#2a2825" stroke="rgba(255,255,255,.12)"/>
+          <rect x="16" y="14" width="128" height="22" rx="4" fill="#EDECE8"/>
+          <rect x="16" y="14" width="128" height="7" rx="3" fill="#D4246C"/>
+          <text x="80" y="32" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#1F1E1A">ACHADINHOS · LADO A</text>
+          <rect x="30" y="44" width="100" height="34" rx="17" fill="#151411"/>
+          <circle id="tapeL" cx="52" cy="61" r="15" fill="#3b2a30"/>
+          <circle id="tapeR" cx="108" cy="61" r="15" fill="#3b2a30"/>
+          <g class="reel" id="reelL"><circle cx="52" cy="61" r="9" fill="#EDECE8"/><path d="M52 53v16M44 61h16M46.3 55.3l11.4 11.4M57.7 55.3L46.3 66.7" stroke="#1F1E1A" stroke-width="2"/><circle cx="52" cy="61" r="3" fill="#D4246C"/></g>
+          <g class="reel" id="reelR"><circle cx="108" cy="61" r="9" fill="#EDECE8"/><path d="M108 53v16M100 61h16M102.3 55.3l11.4 11.4M113.7 55.3l-11.4 11.4" stroke="#1F1E1A" stroke-width="2"/><circle cx="108" cy="61" r="3" fill="#D4246C"/></g>
+          <path d="M48 92l6-10h52l6 10" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+        </svg>
+        <div style="flex:1;min-width:0">
+          <div class="num"><span id="stHoje">0</span><small> / <span id="stMeta">—</span></small></div>
+          <div class="barra"><i id="barraHoje"></i></div>
+          <div class="sub" id="stFaltam"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grade">
+    <div class="card c4 rev">
+      <div class="rotulo">Fila de novas</div>
+      <div class="num" id="stFila">0</div>
+      <div class="sub">esperando a vez de ir pro ar</div>
+    </div>
+    <div class="card c4 rev">
+      <div class="rotulo">Prontas pra repostar</div>
+      <div class="num" id="stRepost">0</div>
+      <div class="sub">48h depois do último envio</div>
+    </div>
+    <div class="card c4 rev">
+      <div class="rotulo">Última rodada</div>
+      <div class="num" style="font-size:30px;margin-top:16px" id="ultimaRes">—</div>
+      <div class="sub" id="ultimaDet"></div>
+    </div>
+  </div>
+
+  <div class="card rev" id="qrBox">
+    <div class="tv">
+      <div class="tela"><img id="qrImg" alt="QR Code do WhatsApp"></div>
+      <div>
+        <div class="titulo2">Sintonize o WhatsApp <small>aguardando sinal</small></div>
+        <ol class="passos">
+          <li><span>No celular do número dos achadinhos, abra o <b>WhatsApp</b>.</span></li>
+          <li><span>Vá em <b>Aparelhos conectados</b> e toque em <b>Conectar aparelho</b>.</span></li>
+          <li><span>Aponte pra tela. O QR troca a cada 20 segundos e esta tela acompanha sozinha.</span></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rev" style="margin-bottom:14px">
+    <div class="titulo2">Controle remoto <small>GitHub Actions</small></div>
+    <div class="botoes">
+      <button class="btn play" id="btnDisparar"><span class="ic">▶</span> Disparar agora</button>
+      <button class="btn" id="btnSimular"><span class="ic">◉</span> Simular</button>
+      <button class="btn" id="btnConectar"><span class="ic">📡</span> Conectar WhatsApp</button>
+      <button class="btn pausa" id="btnPausar"><span class="ic">❚❚</span> Pausar agendamento</button>
+    </div>
+    <p class="dica"><b>Disparar agora</b> ignora horário e meta. <b>Simular</b> mostra as mensagens no log do GitHub sem enviar nada. <b>Pausar</b> desliga as rodadas de hora em hora até você retomar.</p>
+  </div>
+
+  <div class="grade">
+    <div class="card c7 rev">
+      <div class="titulo2">Últimos envios <small>log</small></div>
+      <div class="tabela"><table>
+        <thead><tr><th>Quando</th><th>Produto</th><th>Destino</th><th>Resultado</th></tr></thead>
+        <tbody id="tbEnvios"><tr><td colspan="4" class="vazio">—</td></tr></tbody>
+      </table></div>
+    </div>
+    <div class="c5" style="display:grid;gap:14px;align-content:start">
+      <div class="card rev">
+        <div class="titulo2">Canais <small>grupos</small></div>
+        <div id="lsGrupos" class="vazio">—</div>
+      </div>
+      <div class="card rev">
+        <div class="titulo2">Execuções <small>GitHub</small></div>
+        <div id="lsRuns" class="vazio">Configure o token em Ajustes.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="vhs">
+  <span class="play" id="vhsPlay">▶ PLAY</span>
+  <span class="trilha"><i></i></span>
+  <span class="meio" id="vhsMeio">SP · LADO A</span>
+  <span id="vhsHora">--:--</span>
+</div>
+
+<dialog id="dlgConfig">
+  <h2>Ajustes</h2>
+  <p class="sub">Esses dados ficam salvos só neste navegador.</p>
+  <label for="cfgSenha">Senha do painel</label>
+  <input id="cfgSenha" type="password" autocomplete="current-password">
+  <div class="dica" style="margin-top:6px">A mesma do secret PANEL_SENHA do repositório do bot.</div>
+  <label for="cfgRepo">Repositório do bot</label>
+  <input id="cfgRepo" placeholder="brunoalmaz/auto-achadinhos">
+  <label for="cfgToken">Token do GitHub (pros botões)</label>
+  <input id="cfgToken" type="password" placeholder="github_pat_…">
+  <div class="dica" style="margin-top:6px">Fine-grained token só do repositório do bot, com <b>Actions: Read and write</b>.</div>
+  <div class="botoes" style="margin-top:24px;justify-content:space-between">
+    <button class="btn leve" id="cfgSair">Apagar deste navegador</button>
+    <button class="btn play" id="cfgSalvar">Salvar</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const WORKFLOW_DISPARO = 'disparo.yml';
+  const WORKFLOW_CONECTAR = 'conectar.yml';
+  const BOTOES = ['btnDisparar', 'btnSimular', 'btnConectar', 'btnPausar'];
+
+  /* ================= MOTION ================= */
+
+  // Fundo em canvas: brilhos rosa, partículas de poeira, linhas de TV e faixa de rastreio VHS.
+  const cv = $('bg'), cx = cv.getContext('2d');
+  let W, H, DPR, mouse = { x: .7, y: .2, tx: .7, ty: .2 };
+  const parts = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), v: .00015 + Math.random() * .0004, r: .6 + Math.random() * 1.8, a: .15 + Math.random() * .45 }));
+  function tam() { DPR = Math.min(2, devicePixelRatio || 1); W = cv.width = innerWidth * DPR; H = cv.height = innerHeight * DPR; }
+  addEventListener('resize', tam); tam();
+  addEventListener('pointermove', (e) => { mouse.tx = e.clientX / innerWidth; mouse.ty = e.clientY / innerHeight; });
+  function quadro(t) {
+    mouse.x += (mouse.tx - mouse.x) * .04; mouse.y += (mouse.ty - mouse.y) * .04;
+    cx.fillStyle = '#1F1E1A'; cx.fillRect(0, 0, W, H);
+    const orbe = (x, y, r, c) => { const g = cx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(31,30,26,0)'); cx.fillStyle = g; cx.fillRect(0, 0, W, H); };
+    const s = t / 1000;
+    orbe(W * (.78 + Math.sin(s * .21) * .06 + (mouse.x - .5) * .08), H * (.12 + Math.cos(s * .17) * .05 + (mouse.y - .5) * .06), Math.max(W, H) * .55, 'rgba(212,36,108,.30)');
+    orbe(W * (.12 + Math.cos(s * .13) * .05), H * (.85 + Math.sin(s * .19) * .04), Math.max(W, H) * .45, 'rgba(232,83,143,.14)');
+    orbe(W * mouse.x, H * mouse.y, Math.max(W, H) * .18, 'rgba(242,167,195,.06)');
+    // ondas sutis
+    cx.lineWidth = 1 * DPR;
+    for (let k = 0; k < 4; k++) {
+      cx.beginPath();
+      for (let x = 0; x <= W; x += 12 * DPR) {
+        const y = H * (.32 + k * .14) + Math.sin(x / (180 * DPR) + s * (.5 + k * .12) + k) * 26 * DPR;
+        x ? cx.lineTo(x, y) : cx.moveTo(x, y);
+      }
+      cx.strokeStyle = `rgba(242,167,195,${.05 - k * .008})`; cx.stroke();
+    }
+    // partículas
+    for (const p of parts) {
+      p.y -= p.v; if (p.y < -.02) { p.y = 1.02; p.x = Math.random(); }
+      cx.beginPath(); cx.arc(p.x * W + Math.sin(s + p.r * 9) * 6 * DPR, p.y * H, p.r * DPR, 0, 6.283);
+      cx.fillStyle = `rgba(246,244,239,${p.a * .5})`; cx.fill();
+    }
+    // faixa de rastreio descendo
+    const fy = ((s * .06) % 1.3 - .15) * H;
+    const g = cx.createLinearGradient(0, fy - 40 * DPR, 0, fy + 40 * DPR);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.035)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.fillStyle = g; cx.fillRect(0, fy - 40 * DPR, W, 80 * DPR);
+    if (!reduz) requestAnimationFrame(quadro);
+  }
+  requestAnimationFrame(quadro);
+
+  // Chiado de TV ao "trocar de canal" (botões e atualizações importantes).
+  const st = $('staticCv'), sx = st.getContext('2d'), img = sx.createImageData(160, 90);
+  function chiado(ms = 260) {
+    if (reduz) return;
+    const el = $('static'); const fim = performance.now() + ms;
+    el.style.opacity = '.55';
+    (function f() {
+      for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+      sx.putImageData(img, 0, 0);
+      if (performance.now() < fim) requestAnimationFrame(f); else el.animate([{ opacity: .55 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = () => { el.style.opacity = 0; };
+    })();
+    document.querySelector('main').animate(
+      [{ transform: 'translate(0,0) skewX(0)', filter: 'none' }, { transform: 'translate(-6px,2px) skewX(-2deg)', filter: 'hue-rotate(40deg) saturate(1.6)' },
+       { transform: 'translate(5px,-1px) skewX(1deg)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: 'steps(4)' });
+  }
+
+  // Título palavra por palavra (estilo After Effects: sobe, desfoca e assenta).
+  function entradaTitulo() {
+    const h = $('titulo');
+    h.innerHTML = h.innerHTML.replace(/(<em>)?([^<\s]+)(<\/em>)?/g, (m, a, w, b) => `${a || ''}<span class="w">${w}</span>${b || ''}`);
+    h.querySelectorAll('.w').forEach((w, i) => w.animate(
+      [{ transform: 'translateY(60%) rotate(4deg)', opacity: 0, filter: 'blur(10px)' }, { transform: 'none', opacity: 1, filter: 'blur(0)' }],
+      { duration: 1100, delay: 120 + i * 140, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' }));
+  }
+  function revelar() {
+    document.querySelectorAll('.rev').forEach((el, i) => el.animate(
+      [{ opacity: 0, transform: 'translateY(34px) scale(.98)', filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }],
+      { duration: 1000, delay: 350 + i * 70, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' }));
+  }
+  if (!reduz) { entradaTitulo(); revelar(); } else document.querySelectorAll('.rev').forEach((e) => { e.style.opacity = 1; });
+
+  // Brilho que segue o mouse + leve inclinação 3D nos cards.
+  document.querySelectorAll('.card').forEach((c) => {
+    c.addEventListener('pointermove', (e) => {
+      const r = c.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      c.style.setProperty('--mx', px * 100 + '%'); c.style.setProperty('--my', py * 100 + '%');
+      if (!reduz && r.width < 700) c.style.transform = `perspective(900px) rotateX(${(.5 - py) * 4}deg) rotateY(${(px - .5) * 5}deg)`;
+    });
+    c.addEventListener('pointerleave', () => { c.style.transform = ''; });
+  });
+
+  // Onda ao clicar nos botões.
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.btn'); if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, s = document.createElement('span');
+    s.className = 'ripple'; s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+    b.appendChild(s); setTimeout(() => s.remove(), 700);
+  });
+
+  // Números que contam até o valor.
+  function contar(el, alvo) {
+    alvo = Number(alvo) || 0; const de = Number(el.dataset.v || 0); el.dataset.v = alvo;
+    if (reduz || de === alvo) { el.textContent = alvo; return; }
+    const t0 = performance.now(), dur = 1200;
+    (function f(t) { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4); el.textContent = Math.round(de + (alvo - de) * e); if (k < 1) requestAnimationFrame(f); })(t0);
+  }
+
+  // Timecode e relógio (hora de São Paulo).
+  function relogio() {
+    const d = new Date(), p = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
+    $('tc').textContent = p + ':' + String(Math.floor(d.getMilliseconds() / 1000 * 30)).padStart(2, '0');
+    $('vhsHora').textContent = p.slice(0, 5) + ' SP';
+    requestAnimationFrame(relogio);
+  }
+  relogio();
+
+  /* ================= DADOS ================= */
+
+  const guardar = {
+    get: (k, padrao = '') => { try { return localStorage.getItem('achadinhos.' + k) ?? padrao; } catch { return padrao; } },
+    set: (k, v) => { try { localStorage.setItem('achadinhos.' + k, v); } catch { /* sem storage */ } },
+    limpar: () => { try { Object.keys(localStorage).filter((k) => k.startsWith('achadinhos.')).forEach((k) => localStorage.removeItem(k)); } catch {} },
+  };
+  const cfg = () => ({ senha: guardar.get('senha'), repo: guardar.get('repo', 'brunoalmaz/auto-achadinhos'), token: guardar.get('token') });
+
+  let branchPadrao = null, workflowAtivo = null, timer = null, ultimoWhats = null;
+
+  function aviso(texto, tipo = 'info', segundos = 6) {
+    const m = $('msg'); m.className = 'msg ' + tipo; m.textContent = texto;
+    requestAnimationFrame(() => m.classList.add('show'));
+    clearTimeout(aviso.t);
+    if (segundos) aviso.t = setTimeout(() => m.classList.remove('show'), segundos * 1000);
+  }
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  async function abrir(pacote, senha) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+    const chave = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(pacote.sal), iterations: pacote.iteracoes, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    const claro = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(pacote.iv) }, chave, b64(pacote.dados));
+    return JSON.parse(new TextDecoder().decode(claro));
+  }
+  async function carregarStatus() {
+    const r = await fetch('status.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status === 404 ? 'O bot ainda não gravou nenhuma fita. Rode o bot uma vez.' : 'Erro ' + r.status + ' ao ler status.json');
+    const bruto = await r.json();
+    if (!bruto.criptografado) return bruto;
+    const { senha } = cfg();
+    if (!senha) throw new Error('SEM_SENHA');
+    try { return await abrir(bruto.criptografado, senha); } catch { throw new Error('SENHA_ERRADA'); }
+  }
+
+  const WHATS = {
+    CONECTADO: ['No ar', 'Conectado', 'ok'], DESCONECTADO: ['Fora do ar', 'Desconectado', 'erro'],
+    AGUARDANDO_QR: ['Sintonizando', 'Aguardando QR', 'alerta'], DESCONHECIDO: ['Sem sinal', 'Sem informação', 'neutro'],
+  };
+  const EXEC = {
+    OK: 'Tudo certo', COM_ERROS: 'Com erros', ERRO: 'Falhou', PAUSADO: 'Pausado na planilha',
+    FORA_DO_HORARIO: 'Fora do horário', SEM_OFERTAS: 'Sem ofertas',
+  };
+
+  function pintarStatus(s) {
+    $('atualizado').innerHTML = 'Última gravação do bot: <b>' + esc(s.atualizado_em || '—') + '</b>';
+    const [grande, pill, cls] = WHATS[s.whatsapp] || WHATS.DESCONHECIDO;
+    $('whatsTxt').textContent = grande;
+    $('stWhats').textContent = pill; $('stWhats').className = 'pill ' + cls;
+    $('onair').textContent = s.whatsapp === 'CONECTADO' ? 'ON AIR' : 'OFF AIR';
+    $('onair').className = 'onair' + (s.whatsapp === 'CONECTADO' ? ' on' : '');
+    if (ultimoWhats && ultimoWhats !== s.whatsapp) chiado(320);
+    ultimoWhats = s.whatsapp;
+
+    $('stSistema').textContent = 'Planilha ' + (s.sistema || '—') + ' · ' + (s.horario || '') + (s.dias ? ' · ' + s.dias.replace(/,/g, ' ') : '');
+    const hoje = s.enviados_hoje || 0, meta = s.meta_dia || 0;
+    contar($('stHoje'), hoje); $('stMeta').textContent = meta || '—';
+    const pct = meta ? Math.min(1, hoje / meta) : 0;
+    $('barraHoje').style.width = pct * 100 + '%';
+    $('stFaltam').textContent = meta ? (hoje >= meta ? 'Meta do dia batida. Fita no fim, lado A completo.' : `Faltam ${meta - hoje} pra fechar o dia.`) : '';
+    // a fita "enrola" de um rolo pro outro conforme a meta avança
+    $('tapeL').setAttribute('r', (15 - pct * 5).toFixed(1)); $('tapeR').setAttribute('r', (10 + pct * 5).toFixed(1));
+    const rodando = s.whatsapp === 'CONECTADO' && hoje < meta;
+    $('reelL').classList.toggle('lento', !rodando); $('reelR').classList.toggle('lento', !rodando);
+
+    contar($('stFila'), s.fila_novas); contar($('stRepost'), s.repost_disponiveis);
+
+    const ex = s.ultima_execucao || {};
+    $('ultimaRes').textContent = EXEC[ex.resultado] || ex.resultado || '—';
+    $('ultimaRes').style.color = ex.resultado === 'OK' ? 'var(--ok)' : ['ERRO', 'COM_ERROS'].includes(ex.resultado) ? 'var(--bad)' : '';
+    $('ultimaDet').textContent = ex.detalhe || '';
+
+    const qr = s.whatsapp === 'AGUARDANDO_QR' && s.qr;
+    const box = $('qrBox');
+    document.body.classList.toggle('sinal', Boolean(qr));
+    if (qr) { if (box.style.display !== 'block') { box.style.display = 'block'; box.style.opacity = 1; } if ($('qrImg').src !== s.qr) $('qrImg').src = s.qr; }
+    else box.style.display = 'none';
+
+    const envios = s.ultimos_envios || [];
+    $('tbEnvios').innerHTML = envios.length ? envios.map((e) => `
+      <tr><td class="quando">${esc(e.dataHora)}</td><td>${esc(e.produto)}</td><td>${esc(e.destino)}</td>
+      <td><span class="pill mini ${e.resultado === 'OK' ? 'ok' : 'erro'}">${esc(e.resultado)}</span>${e.detalhe ? `<div class="det">${esc(e.detalhe)}</div>` : ''}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="vazio">Nenhum envio ainda. A fita está virgem.</td></tr>';
+    if (!reduz) $('tbEnvios').querySelectorAll('tr').forEach((tr, i) => tr.animate([{ opacity: 0, transform: 'translateX(-14px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: i * 45, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' }));
+
+    const grupos = s.grupos || [];
+    $('lsGrupos').className = grupos.length ? '' : 'vazio';
+    $('lsGrupos').innerHTML = grupos.length ? grupos.map((g) => `
+      <div class="item"><span><span class="nome">${esc(g.nome)}</span><span class="tipo">${esc(g.tipo)}</span></span>
+      <span class="pill mini ${!g.ativo ? 'neutro' : g.conectado ? 'ok' : 'erro'}">${!g.ativo ? 'Desligado' : g.conectado ? 'Sintonizado' : 'Sem ID'}</span></div>`).join('')
+      : 'Nenhum grupo.';
+    if (s.aviso) aviso(s.aviso, 'alerta', 0);
+  }
+
+  async function gh(caminho, opcoes = {}) {
+    const { repo, token } = cfg();
+    if (!token) throw new Error('Coloque o token do GitHub em ⚙ Ajustes.');
+    const r = await fetch(`https://api.github.com/repos/${repo}${caminho}`, {
+      ...opcoes,
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opcoes.headers || {}) },
+    });
+    if (r.status === 401) throw new Error('Token inválido ou expirado.');
+    if (r.status === 403 || r.status === 404) throw new Error('O token não tem acesso a ' + repo + ' (precisa de Actions: Read and write).');
+    if (!r.ok) throw new Error('GitHub respondeu ' + r.status);
+    return r.status === 204 ? null : r.json();
+  }
+  async function branch() { if (!branchPadrao) branchPadrao = (await gh('')).default_branch || 'main'; return branchPadrao; }
+
+  async function carregarGitHub() {
+    const tem = Boolean(cfg().token);
+    BOTOES.forEach((id) => { $(id).disabled = !tem; });
+    if (!tem) {
+      $('agendaTxt').textContent = 'Sem controle'; $('stAgenda').textContent = 'configure o token'; $('stAgenda').className = 'pill neutro';
+      return;
+    }
+    const [wf, runs] = await Promise.all([gh(`/actions/workflows/${WORKFLOW_DISPARO}`), gh('/actions/runs?per_page=8')]);
+    workflowAtivo = wf.state === 'active';
+    $('agendaTxt').textContent = workflowAtivo ? 'Rodando' : 'Pausado';
+    $('stAgenda').textContent = workflowAtivo ? 'de hora em hora' : 'nada sai até retomar';
+    $('stAgenda').className = 'pill ' + (workflowAtivo ? 'ok' : 'alerta');
+    $('btnPausar').innerHTML = workflowAtivo ? '<span class="ic">❚❚</span> Pausar agendamento' : '<span class="ic">▶</span> Retomar agendamento';
+    $('btnPausar').className = 'btn ' + (workflowAtivo ? 'pausa' : 'retoma');
+    $('vhsPlay').textContent = workflowAtivo ? '▶ PLAY' : '❚❚ PAUSE';
+    $('vhsPlay').className = 'play' + (workflowAtivo ? '' : ' pause');
+
+    const lista = runs.workflow_runs || [];
+    $('lsRuns').className = lista.length ? '' : 'vazio';
+    $('lsRuns').innerHTML = lista.length ? lista.map((r) => {
+      const rodando = r.status !== 'completed';
+      const cls = rodando ? 'info' : r.conclusion === 'success' ? 'ok' : r.conclusion === 'cancelled' ? 'neutro' : 'erro';
+      const txt = rodando ? 'gravando' : r.conclusion === 'success' ? 'ok' : r.conclusion === 'cancelled' ? 'cancelado' : 'falhou';
+      const quando = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `<div class="item"><span><a href="${esc(r.html_url)}" target="_blank" rel="noopener">${esc(r.name)}</a><span class="tipo">${quando}</span></span><span class="pill mini ${cls}">${txt}</span></div>`;
+    }).join('') : 'Nenhuma execução ainda.';
+    $('vhsMeio').textContent = 'SP · LADO A · ' + (lista[0] ? 'ÚLTIMA: ' + (lista[0].status !== 'completed' ? 'GRAVANDO' : lista[0].conclusion === 'success' ? 'OK' : 'FALHOU') : 'SEM GRAVAÇÕES');
+  }
+
+  async function disparar(workflow, inputs, texto) {
+    try {
+      chiado();
+      await gh(`/actions/workflows/${workflow}/dispatches`, { method: 'POST', body: JSON.stringify({ ref: await branch(), inputs }) });
+      aviso(texto, 'ok'); setTimeout(atualizar, 4000);
+    } catch (e) { aviso(e.message, 'erro'); }
+  }
+  $('btnDisparar').onclick = () => confirm('Disparar uma rodada agora nos grupos?') &&
+    disparar(WORKFLOW_DISPARO, { forcar: true, teste: false }, 'Rodada no ar. Em 1 a 3 minutos os posts chegam nos grupos.');
+  $('btnSimular').onclick = () => disparar(WORKFLOW_DISPARO, { forcar: true, teste: true }, 'Simulação iniciada. Abra a execução em "Execuções" pra ver as mensagens.');
+  $('btnConectar').onclick = () => disparar(WORKFLOW_CONECTAR, { nova_sessao: false }, 'Sintonizando. O QR Code aparece aqui em uns 40 segundos.');
+  $('btnPausar').onclick = async () => {
+    const acao = workflowAtivo ? 'disable' : 'enable';
+    if (acao === 'disable' && !confirm('Pausar o agendamento? Nada será enviado até retomar.')) return;
+    try {
+      chiado();
+      await gh(`/actions/workflows/${WORKFLOW_DISPARO}/${acao}`, { method: 'PUT' });
+      aviso(acao === 'disable' ? 'Fita pausada. Nada sai até você retomar.' : 'Play! Agendamento de volta.', 'ok');
+      await carregarGitHub();
+    } catch (e) { aviso(e.message, 'erro'); }
+  };
+
+  async function atualizar() {
+    try {
+      const s = await carregarStatus();
+      pintarStatus(s);
+      clearTimeout(timer); timer = setTimeout(atualizar, s.whatsapp === 'AGUARDANDO_QR' ? 8000 : 60000);
+    } catch (e) {
+      if (e.message === 'SEM_SENHA') { aviso('Digite a senha do painel em ⚙ Ajustes.', 'alerta', 0); abrirConfig(); }
+      else if (e.message === 'SENHA_ERRADA') { aviso('Senha do painel incorreta.', 'erro', 0); abrirConfig(); }
+      else $('atualizado').textContent = e.message;
+      clearTimeout(timer); timer = setTimeout(atualizar, 60000);
+    }
+    try { await carregarGitHub(); } catch (e) { aviso(e.message, 'erro'); }
+  }
+
+  function abrirConfig() {
+    const c = cfg(); $('cfgSenha').value = c.senha; $('cfgRepo').value = c.repo; $('cfgToken').value = c.token;
+    if (!$('dlgConfig').open) $('dlgConfig').showModal();
+  }
+  $('btnConfig').onclick = abrirConfig;
+  $('btnAtualizar').onclick = () => { chiado(180); atualizar(); };
+  $('cfgSalvar').onclick = () => {
+    guardar.set('senha', $('cfgSenha').value);
+    guardar.set('repo', $('cfgRepo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '') || 'brunoalmaz/auto-achadinhos');
+    guardar.set('token', $('cfgToken').value.trim());
+    branchPadrao = null; $('dlgConfig').close(); $('msg').classList.remove('show'); chiado(); atualizar();
+  };
+  $('cfgSair').onclick = () => { guardar.limpar(); $('dlgConfig').close(); location.reload(); };
+
+  atualizar();
+})();
+</script>
+</body>
+</html>
