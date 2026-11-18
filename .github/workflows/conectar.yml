@@ -1,0 +1,55 @@
+name: Conectar WhatsApp
+
+# Rode manualmente (Actions > Conectar WhatsApp > Run workflow) na primeira vez
+# e sempre que a sessão cair. Abra o log do passo "Mostrar QR Code" e leia o QR
+# com o celular em WhatsApp > Aparelhos conectados > Conectar aparelho.
+
+on:
+  workflow_dispatch:
+    inputs:
+      nova_sessao:
+        description: 'Apagar a sessão antiga e começar do zero'
+        type: boolean
+        default: false
+
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+
+jobs:
+  conectar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Restaurar sessão do WhatsApp
+        if: ${{ !inputs.nova_sessao }}
+        uses: actions/cache/restore@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}
+          restore-keys: wa-auth-
+
+      - name: Mostrar QR Code
+        run: node src/main.js
+        env:
+          MODO: login
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
+          PANEL_TOKEN: ${{ secrets.PANEL_TOKEN }}
+          PANEL_SENHA: ${{ secrets.PANEL_SENHA }}
+          PANEL_REPO: ${{ vars.PANEL_REPO }}
+
+      - name: Salvar sessão do WhatsApp
+        if: always() && hashFiles('auth/creds.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}-${{ github.run_attempt }}
