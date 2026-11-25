@@ -17,7 +17,7 @@ const FORCAR = ['1', 'true', 'sim'].includes(String(process.env.FORCAR || '').to
 const DRY_RUN = ['1', 'true', 'sim'].includes(String(process.env.DRY_RUN || '').toLowerCase());
 
 function resumoStatus(dados, agora, extra = {}) {
-  const hoje = enviadasHoje(dados.log, agora.hojeTexto);
+  const hoje = enviadasHoje(dados.log, agora.hojeTexto, lerDataBR);
   return {
     atualizado_em: agora.dataHoraSegTexto,
     sistema: dados.config.sistema,
@@ -115,7 +115,7 @@ async function modoEnvio(planilha, dados, agora) {
     return status({ ultima_execucao: { modo: MODO, resultado: 'FORA_DO_HORARIO', detalhe: motivoHorario } });
   }
 
-  const hoje = enviadasHoje(dados.log, agora.hojeTexto);
+  const hoje = enviadasHoje(dados.log, agora.hojeTexto, lerDataBR);
   // Trava: nunca mais que postsPorExecucao (2) achadinhos em 60 minutos, mesmo com disparo manual.
   const naHora = enviadasUltimaHora(dados.log, agora.data, lerDataBR);
   const livresNaHora = Math.max(0, config.postsPorExecucao - naHora);
