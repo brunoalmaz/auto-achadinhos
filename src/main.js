@@ -117,7 +117,9 @@ async function modoEnvio(planilha, dados, agora) {
 
   const hoje = enviadasHoje(dados.log, agora.hojeTexto, lerDataBR);
   // Trava: nunca mais que postsPorExecucao (2) achadinhos em 60 minutos, mesmo com disparo manual.
-  const naHora = enviadasUltimaHora(dados.log, agora.data, lerDataBR);
+  // Janela de 45 min (com 60 min de janela): como os horários são sorteados, o 2º post da rodada anterior
+  // pode ter saído há 40–50 min; contar 60 min cortaria a rodada nova pela metade.
+  const naHora = enviadasUltimaHora(dados.log, agora.data, lerDataBR, config.janelaMin * 0.75 * 60_000);
   const livresNaHora = Math.max(0, config.postsPorExecucao - naHora);
   const n = Math.min(livresNaHora, FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size));
   if (!n && naHora) {
@@ -131,6 +133,11 @@ async function modoEnvio(planilha, dados, agora) {
   }
 
   let sock = null;
+  if (!DRY_RUN && !FORCAR && config.atrasoInicialMaxSeg > 0) {
+    const atraso = aleatorioEntre(0, config.atrasoInicialMaxSeg);
+    console.log(`Horário sorteado: 1º achadinho daqui a ${Math.round(atraso / 60)} min.`);
+    await esperar(atraso * 1000);
+  }
   if (!DRY_RUN) {
     try {
       ({ sock } = await conectar());
