@@ -12,6 +12,16 @@ export function enviadasHoje(log, hojeTexto) {
   return s;
 }
 
+/** Ofertas enviadas com sucesso nos últimos 60 minutos (pelo Log). */
+export function enviadasUltimaHora(log, agora, lerData) {
+  const s = new Set();
+  for (const l of log) {
+    const d = lerData(l.dataHora);
+    if (l.resultado === 'OK' && l.linha && d && agora.getTime() - d.getTime() < HORA) s.add(l.linha);
+  }
+  return s.size;
+}
+
 /** Quantos achadinhos esta rodada deve mandar. */
 export function quantidadeDaRodada(config, jaEnviadosHoje) {
   const faltam = Math.max(0, config.postsPorDia - jaEnviadosHoje);
