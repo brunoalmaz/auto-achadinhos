@@ -32,6 +32,12 @@ export function agoraSP(data = new Date()) {
  */
 export function lerDataBR(texto) {
   if (!texto) return null;
+  // A planilha às vezes guarda a data como número de série (ex.: 46351,63428 = dias desde 30/12/1899, hora de SP).
+  const serie = String(texto).trim().match(/^(\d{5})(?:[.,](\d+))?$/);
+  if (serie) {
+    const dias = Number(`${serie[1]}.${serie[2] || 0}`);
+    return new Date(Math.round((dias - 25569) * 86400000) + 3 * 3600000);
+  }
   const m = String(texto).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
   if (!m) return null;
   const [, d, mo, a, h = '0', mi = '0', s = '0'] = m;
