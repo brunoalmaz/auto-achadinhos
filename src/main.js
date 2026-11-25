@@ -34,15 +34,18 @@ function resumoStatus(dados, agora, extra = {}) {
       repostValidadeDias: dados.config.repostValidadeDias,
       hoje,
     }).length,
-    grupos: dados.grupos.map((g) => ({ nome: g.nome, tipo: g.tipo, ativo: g.ativo, conectado: Boolean(g.jid) })),
+    grupos: dados.grupos.map((g) => ({ nome: g.nome, tipo: g.tipo, ativo: g.ativo, conectado: Boolean(g.jid), id: g.jid })),
+    disponiveis: dados.disponiveis || [],
     ultimos_envios: dados.log.slice(-15).reverse(),
     ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: '' },
     ...extra,
   };
 }
 
-async function sincronizarGrupos(sock, planilha, grupos) {
+async function sincronizarGrupos(sock, planilha, grupos, dados) {
   const { achados, disponiveis } = await localizarGrupos(sock, grupos);
+  await planilha.gravarDisponiveis(disponiveis, agoraSP().dataHoraTexto);
+  if (dados) dados.disponiveis = disponiveis;
   const escrita = [];
   for (const g of achados) {
     if (g.jidEncontrado && g.jidEncontrado !== g.jid) {
@@ -76,7 +79,7 @@ async function modoLogin(planilha, dados, agora) {
   });
   console.log('✅ WhatsApp conectado. Procurando os grupos...');
   await esperar(3000);
-  const grupos = await sincronizarGrupos(sock, planilha, dados.grupos);
+  const grupos = await sincronizarGrupos(sock, planilha, dados.grupos, dados);
   for (const g of grupos) console.log(`  ${g.jid ? '✅' : '❌'} ${g.nome} ${g.jid}`);
   dados.grupos = grupos;
   await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO' }));
@@ -124,7 +127,7 @@ async function modoEnvio(planilha, dados, agora) {
       throw e;
     }
     if (dados.grupos.some((g) => g.ativo && !g.jid)) {
-      dados.grupos = await sincronizarGrupos(sock, planilha, dados.grupos);
+      dados.grupos = await sincronizarGrupos(sock, planilha, dados.grupos, dados);
     }
   }
 
@@ -196,12 +199,30 @@ async function modoEnvio(planilha, dados, agora) {
   }));
 }
 
+// Salva na aba Grupos a seleção feita no painel (não conecta no WhatsApp).
+async function modoGrupos(planilha, dados) {
+  let selecao;
+  try {
+    selecao = JSON.parse(process.env.SELECAO || '[]');
+  } catch {
+    throw new Error('SELECAO inválida (esperado JSON).');
+  }
+  const validos = new Map(dados.disponiveis.map((d) => [d.id, d]));
+  const escolhidos = selecao.map((id) => validos.get(id)).filter(Boolean);
+  console.log(`Salvando ${escolhidos.length} destino(s):`);
+  for (const g of escolhidos) console.log(`  - [${g.tipo}] ${g.nome}`);
+  await planilha.gravarGrupos(escolhidos);
+  Object.assign(dados, await planilha.carregar());
+  await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: `${escolhidos.length} destino(s) salvos` } }));
+}
+
 async function main() {
   const agora = agoraSP();
   const planilha = new Planilha(criarAuth(), process.env.PLANILHA_ID);
   const dados = await planilha.carregar();
   console.log(`Achadinhos bot | modo=${MODO}${FORCAR ? ' forçado' : ''}${DRY_RUN ? ' teste' : ''} | ${agora.dataHoraTexto} (${agora.diaSemana})`);
   if (MODO === 'login') await modoLogin(planilha, dados, agora);
+  else if (MODO === 'grupos') await modoGrupos(planilha, dados);
   else await modoEnvio(planilha, dados, agora);
 }
 
