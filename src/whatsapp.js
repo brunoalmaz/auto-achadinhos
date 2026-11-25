@@ -119,11 +119,15 @@ export async function lerCanais(sock, links) {
     try {
       const m = await sock.newsletterMetadata('invite', codigo);
       if (!m?.id) throw new Error('canal não encontrado');
-      const papel = String(m.viewer_metadata?.role || '').toUpperCase();
-      const nome = m.thread_metadata?.name?.text || m.name || codigo;
-      const admin = ['ADMIN', 'OWNER'].includes(papel);
-      console.log(`  ${admin ? '✅' : '⚠️ '} Canal "${nome}" (${papel || 'sem papel'})${admin ? '' : ' — o número precisa ser admin do canal pra postar'}`);
-      if (admin) canais.push({ nome, tipo: 'CANAL', id: m.id });
+      let papel = String(m.viewer_metadata?.role || '').toUpperCase();
+      if (!papel) {
+        try { papel = String((await sock.newsletterMetadata('jid', m.id))?.viewer_metadata?.role || '').toUpperCase(); } catch { /* segue sem papel */ }
+      }
+      const nome = String(m.thread_metadata?.name?.text || m.name || codigo).trim();
+      // Sem papel informado, o canal entra mesmo assim: se o número não for admin, o envio falha e aparece no Log.
+      const bloqueado = ['SUBSCRIBER', 'GUEST'].includes(papel);
+      console.log(`  ${bloqueado ? '⚠️ ' : '✅'} Canal "${nome}" (${papel || 'papel não informado'})${bloqueado ? ' — o número só segue o canal; precisa ser admin pra postar' : ''}`);
+      if (!bloqueado) canais.push({ nome, tipo: 'CANAL', id: m.id });
     } catch (e) {
       console.log(`  ❌ Canal ${codigo}: ${e.message}`);
     }
