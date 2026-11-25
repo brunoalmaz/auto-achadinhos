@@ -22,6 +22,12 @@ export function camposDaOferta(o) {
     preco_por: limparPreco(o.precoPor),
     desconto: o.desconto && o.desconto !== '0%' ? o.desconto : '',
     cupom: o.cupom,
+    // Preço já com o cupom aplicado (calculado na planilha pela aba Cupons).
+    preco_cupom: limparPreco(o.precoCupom),
+    // Linha pronta do cupom: com preço se a planilha calculou, senão só o código.
+    cupom_info: !o.cupom ? '' : (limparPreco(o.precoCupom)
+      ? `*R$ ${limparPreco(o.precoCupom)}* com o cupom ${o.cupom}`
+      : `Use o cupom ${o.cupom}`),
     link: o.link,
   };
 }
