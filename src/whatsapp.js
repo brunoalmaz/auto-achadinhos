@@ -186,6 +186,11 @@ async function enviarImagemCanal(sock, jid, imagem, legenda) {
     },
   });
   const id = generateMessageID();
-  await sock.relayMessage(jid, msg, { messageId: id, additionalAttributes: resp.handle ? { media_id: resp.handle } : {} });
+  // O Baileys não põe o atributo "mediatype" no nó do canal; o servidor recusa (erro 479). Montamos na mão.
+  await sock.sendNode({
+    tag: 'message',
+    attrs: { to: jid, id, type: 'media', ...(resp.handle ? { media_id: resp.handle } : {}) },
+    content: [{ tag: 'plaintext', attrs: { mediatype: 'image' }, content: proto.Message.encode(msg).finish() }],
+  });
   return { key: { id, remoteJid: jid } };
 }
