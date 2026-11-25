@@ -18,11 +18,11 @@ export function enviadasHoje(log, hojeTexto, lerData) {
 }
 
 /** Ofertas enviadas com sucesso nos últimos 60 minutos (pelo Log). */
-export function enviadasUltimaHora(log, agora, lerData) {
+export function enviadasUltimaHora(log, agora, lerData, janelaMs = HORA) {
   const s = new Set();
   for (const l of log) {
     const d = lerData(l.dataHora);
-    if (l.resultado === 'OK' && l.linha && d && agora.getTime() - d.getTime() < HORA) s.add(l.linha);
+    if (l.resultado === 'OK' && l.linha && d && agora.getTime() - d.getTime() < janelaMs) s.add(l.linha);
   }
   return s.size;
 }
