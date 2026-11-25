@@ -1,6 +1,6 @@
 // Teste de envio para um canal (newsletter). Uso: CANAL=<link> node src/testeCanal.js
 import QRCode from 'qrcode';
-import { conectar, desconectar } from './whatsapp.js';
+import { conectar, desconectar, enviarPost } from './whatsapp.js';
 import { esperar } from './util.js';
 
 const link = process.env.CANAL || '';
@@ -15,13 +15,11 @@ try {
   const img = await QRCode.toBuffer('Assopra Fitas - teste', { width: 600 });
   const hora = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   const testes = [
-    ['1 texto', { text: `Teste 1 (${hora}): só texto` }],
-    ['2 imagem+legenda', { image: img, caption: `Teste 2 (${hora}): imagem com legenda` }],
-    ['3 imagem sem legenda', { image: img }],
+    ['4 imagem+legenda (corrigido)', { imagem: img, texto: `Teste 4 (${hora}): imagem com legenda, envio corrigido` }],
   ];
   for (const [nome, conteudo] of testes) {
     try {
-      const r = await sock.sendMessage(jid, conteudo);
+      const r = await enviarPost(sock, jid, conteudo);
       console.log(`✅ ${nome}: id ${r?.key?.id}`);
     } catch (e) {
       console.log(`❌ ${nome}: ${e.message}`);
