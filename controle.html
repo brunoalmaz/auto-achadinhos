@@ -90,6 +90,7 @@ h1 em{color:var(--mag);font-style:italic}
 .tv{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
 @media (max-width:700px){.tv{grid-template-columns:1fr;justify-items:center;text-align:center}}
 .tela{position:relative;padding:18px;border-radius:34px;background:linear-gradient(145deg,#2c2a26,#151411);box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),0 20px 60px rgba(0,0,0,.5),0 0 80px rgba(212,36,108,.25)}
+.tela img:not([src]){min-height:250px;background:repeating-linear-gradient(45deg,#eee 0 10px,#ddd 10px 20px);animation:none}
 .tela img{display:block;width:250px;max-width:70vw;border-radius:16px;background:#fff;padding:12px;animation:ligar .7s var(--ease) both}
 @keyframes ligar{0%{transform:scale(1,.01);filter:brightness(3)}60%{transform:scale(1,1.02)}100%{transform:none;filter:none}}
 .tela::after{content:"";position:absolute;inset:6px;border-radius:30px;pointer-events:none;box-shadow:inset 0 0 30px rgba(0,0,0,.6)}
@@ -161,6 +162,11 @@ input{width:100%;font:inherit;padding:12px 14px;background:rgba(0,0,0,.25);color
 input:focus{border-color:var(--mag);box-shadow:0 0 0 4px rgba(212,36,108,.2)}
 
 body.sinal #scan,body.sinal #grain{display:none}
+.gitem{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--line);margin:0;font-family:var(--sans);font-size:15px;letter-spacing:0;text-transform:none;color:var(--fg);cursor:pointer;border-radius:10px}
+.gitem:hover{background:rgba(255,255,255,.04)}
+.gitem input{width:20px;height:20px;accent-color:var(--mag);flex:none}
+.gitem .tipo{margin-left:auto}
+#gLista{max-height:52vh;overflow:auto;margin-top:12px;padding-right:4px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}#grain{display:none}}
 </style>
 </head>
@@ -260,9 +266,10 @@ body.sinal #scan,body.sinal #grain{display:none}
       <button class="btn play" id="btnDisparar"><span class="ic">▶</span> Disparar agora</button>
       <button class="btn" id="btnSimular"><span class="ic">◉</span> Simular</button>
       <button class="btn" id="btnConectar"><span class="ic">📡</span> Conectar WhatsApp</button>
+      <button class="btn" id="btnTrocar"><span class="ic">🔄</span> Trocar número</button>
       <button class="btn pausa" id="btnPausar"><span class="ic">❚❚</span> Pausar agendamento</button>
     </div>
-    <p class="dica"><b>Disparar agora</b> ignora horário e meta. <b>Simular</b> mostra as mensagens no log do GitHub sem enviar nada. <b>Pausar</b> desliga as rodadas de hora em hora até você retomar.</p>
+    <p class="dica"><b>Disparar agora</b> ignora horário e meta. <b>Simular</b> mostra as mensagens no log do GitHub sem enviar nada. <b>Pausar</b> desliga as rodadas de hora em hora até você retomar. <b>Trocar número</b> desconecta o WhatsApp atual e gera um QR novo.</p>
   </div>
 
   <div class="grade">
@@ -277,6 +284,7 @@ body.sinal #scan,body.sinal #grain{display:none}
       <div class="card rev">
         <div class="titulo2">Canais <small>grupos</small></div>
         <div id="lsGrupos" class="vazio">—</div>
+        <button class="btn" id="btnGrupos" style="margin-top:14px;width:100%;justify-content:center"><span class="ic">☑</span> Escolher grupos</button>
       </div>
       <div class="card rev">
         <div class="titulo2">Execuções <small>GitHub</small></div>
@@ -293,6 +301,21 @@ body.sinal #scan,body.sinal #grain{display:none}
   <span id="vhsHora">--:--</span>
 </div>
 
+<dialog id="dlgGrupos">
+  <h2>Escolher grupos</h2>
+  <p class="sub">Marque onde os achadinhos vão ser postados. A lista vem do WhatsApp conectado.</p>
+  <input id="gBusca" placeholder="Buscar grupo…" style="margin-top:14px">
+  <div id="gLista"></div>
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+    <div class="sub" style="margin-bottom:8px">📢 <b style="color:var(--fg)">Canal do WhatsApp?</b> Canais não aparecem sozinhos. Cole o link do canal (Info do canal > Compartilhar link). O número precisa ser admin.</div>
+    <div class="botoes" style="flex-wrap:nowrap"><input id="gCanal" placeholder="https://whatsapp.com/channel/…"><button class="btn" id="gAddCanal" style="flex:none">Adicionar</button></div>
+  </div>
+  <div class="botoes" style="margin-top:18px;justify-content:space-between">
+    <button class="btn leve" id="gFechar">Cancelar</button>
+    <button class="btn play" id="gSalvar">Salvar seleção</button>
+  </div>
+</dialog>
+
 <dialog id="dlgConfig">
   <h2>Ajustes</h2>
   <p class="sub">Esses dados ficam salvos só neste navegador.</p>
@@ -302,7 +325,7 @@ body.sinal #scan,body.sinal #grain{display:none}
   <label for="cfgRepo">Repositório do bot</label>
   <input id="cfgRepo" placeholder="brunoalmaz/auto-achadinhos">
   <label for="cfgToken">Token do GitHub (pros botões)</label>
-  <input id="cfgToken" type="password" placeholder="github_pat_…">
+  <div class="botoes" style="flex-wrap:nowrap"><input id="cfgToken" type="password" placeholder="github_pat_…"><button class="btn leve" id="cfgVer" type="button" style="flex:none">👁 Mostrar</button><button class="btn leve" id="cfgCopiar" type="button" style="flex:none">Copiar</button></div>
   <div class="dica" style="margin-top:6px">Fine-grained token só do repositório do bot, com <b>Actions: Read and write</b>.</div>
   <div class="botoes" style="margin-top:24px;justify-content:space-between">
     <button class="btn leve" id="cfgSair">Apagar deste navegador</button>
@@ -316,7 +339,9 @@ body.sinal #scan,body.sinal #grain{display:none}
   const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const WORKFLOW_DISPARO = 'disparo.yml';
   const WORKFLOW_CONECTAR = 'conectar.yml';
-  const BOTOES = ['btnDisparar', 'btnSimular', 'btnConectar', 'btnPausar'];
+  const BOTOES = ['btnDisparar', 'btnSimular', 'btnConectar', 'btnTrocar', 'btnPausar', 'btnGrupos'];
+  const WORKFLOW_GRUPOS = 'grupos.yml';
+  let ultimoStatus = null;
 
   /* ================= MOTION ================= */
 
@@ -453,8 +478,27 @@ body.sinal #scan,body.sinal #grain{display:none}
     const claro = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(pacote.iv) }, chave, b64(pacote.dados));
     return JSON.parse(new TextDecoder().decode(claro));
   }
+  // Com token, lê o status direto da API do GitHub (atualiza na hora).
+  // Sem token, lê pelo GitHub Pages, que leva ~40s pra publicar cada mudança.
+  const PAINEL_REPO = 'brunoalmaz/achadinhos-painel';
+  async function buscarStatusBruto() {
+    const { token } = cfg();
+    if (token) {
+      try {
+        const r = await fetch(`https://api.github.com/repos/${PAINEL_REPO}/contents/status.json?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github.raw+json', 'X-GitHub-Api-Version': '2022-11-28' },
+        });
+        if (r.ok) return r;
+      } catch { /* cai pro Pages */ }
+    }
+    return fetch('https://brunoalmaz.github.io/achadinhos-painel/status.json?t=' + Date.now(), { cache: 'no-store' });
+  }
+  let sintonizandoAte = 0;
+  const ESPERA_SVG = "data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20250%20250'%3E%3Crect%20width%3D'250'%20height%3D'250'%20fill%3D'%23f4f2ee'%2F%3E%3Ccircle%20cx%3D'125'%20cy%3D'95'%20r%3D'22'%20fill%3D'none'%20stroke%3D'%23D4246C'%20stroke-width%3D'5'%20stroke-dasharray%3D'100%2040'%3E%3CanimateTransform%20attributeName%3D'transform'%20type%3D'rotate'%20from%3D'0%20125%2095'%20to%3D'360%20125%2095'%20dur%3D'1s'%20repeatCount%3D'indefinite'%2F%3E%3C%2Fcircle%3E%3Ctext%20x%3D'125'%20y%3D'150'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'15'%20font-weight%3D'700'%20fill%3D'%231F1E1A'%3ESintonizando%E2%80%A6%3C%2Ftext%3E%3Ctext%20x%3D'125'%20y%3D'175'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'12'%20fill%3D'%236A6964'%3Eo%20QR%20aparece%20em%20~40s%3C%2Ftext%3E%3Ctext%20x%3D'125'%20y%3D'195'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'12'%20fill%3D'%236A6964'%3Ese%20j%C3%A1%20estiver%20conectado%2C%3C%2Ftext%3E%3Ctext%20x%3D'125'%20y%3D'212'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'12'%20fill%3D'%236A6964'%3En%C3%A3o%20precisa%20ler%20nada%3C%2Ftext%3E%3C%2Fsvg%3E";
+
   async function carregarStatus() {
-    const r = await fetch('https://brunoalmaz.github.io/achadinhos-painel/status.json?t=' + Date.now(), { cache: 'no-store' });
+    const r = await buscarStatusBruto();
     if (!r.ok) throw new Error(r.status === 404 ? 'O bot ainda não gravou nenhuma fita. Rode o bot uma vez.' : 'Erro ' + r.status + ' ao ler status.json');
     const bruto = await r.json();
     if (!bruto.criptografado) return bruto;
@@ -473,6 +517,7 @@ body.sinal #scan,body.sinal #grain{display:none}
   };
 
   function pintarStatus(s) {
+    ultimoStatus = s;
     $('atualizado').innerHTML = 'Última gravação do bot: <b>' + esc(s.atualizado_em || '—') + '</b>';
     const [grande, pill, cls] = WHATS[s.whatsapp] || WHATS.DESCONHECIDO;
     $('whatsTxt').textContent = grande;
@@ -500,12 +545,23 @@ body.sinal #scan,body.sinal #grain{display:none}
     $('ultimaRes').style.color = ex.resultado === 'OK' ? 'var(--ok)' : ['ERRO', 'COM_ERROS'].includes(ex.resultado) ? 'var(--bad)' : '';
     $('ultimaDet').textContent = ex.detalhe || '';
 
+    const esperando = Date.now() < sintonizandoAte && s.whatsapp !== 'CONECTADO';
     const qr = s.whatsapp === 'AGUARDANDO_QR' && s.qr;
     const box = $('qrBox');
+    if (!qr && esperando) {
+      box.style.display = 'block'; box.style.opacity = 1;
+      $('qrImg').src = ESPERA_SVG; $('qrImg').alt = '';
+      document.body.classList.remove('sinal');
+      return pintarResto(s);
+    }
+    if (s.whatsapp === 'CONECTADO') sintonizandoAte = 0;
     document.body.classList.toggle('sinal', Boolean(qr));
     if (qr) { if (box.style.display !== 'block') { box.style.display = 'block'; box.style.opacity = 1; } if ($('qrImg').src !== s.qr) $('qrImg').src = s.qr; }
     else box.style.display = 'none';
+    pintarResto(s);
+  }
 
+  function pintarResto(s) {
     const envios = s.ultimos_envios || [];
     $('tbEnvios').innerHTML = envios.length ? envios.map((e) => `
       <tr><td class="quando">${esc(e.dataHora)}</td><td>${esc(e.produto)}</td><td>${esc(e.destino)}</td>
@@ -575,7 +631,55 @@ body.sinal #scan,body.sinal #grain{display:none}
   $('btnDisparar').onclick = () => confirm('Disparar uma rodada agora nos grupos?') &&
     disparar(WORKFLOW_DISPARO, { forcar: true, teste: false }, 'Rodada no ar. Em 1 a 3 minutos os posts chegam nos grupos.');
   $('btnSimular').onclick = () => disparar(WORKFLOW_DISPARO, { forcar: true, teste: true }, 'Simulação iniciada. Abra a execução em "Execuções" pra ver as mensagens.');
-  $('btnConectar').onclick = () => disparar(WORKFLOW_CONECTAR, { nova_sessao: false }, 'Sintonizando. O QR Code aparece aqui em uns 40 segundos.');
+  $('btnConectar').onclick = () => {
+    sintonizandoAte = Date.now() + 6 * 60_000;
+    $('qrBox').style.display = 'block'; $('qrBox').style.opacity = 1; $('qrImg').src = ESPERA_SVG;
+    $('qrBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    disparar(WORKFLOW_CONECTAR, { nova_sessao: false }, 'Sintonizando. O QR Code aparece aqui em uns 40 segundos.');
+  };
+  $('btnTrocar').onclick = () => {
+    if (!confirm('Trocar o número? O WhatsApp atual será desconectado do bot e um QR novo vai aparecer aqui. Depois, remova o "Achadinhos Bot" em Aparelhos conectados no celular antigo.')) return;
+    sintonizandoAte = Date.now() + 6 * 60_000;
+    $('qrBox').style.display = 'block'; $('qrBox').style.opacity = 1; $('qrImg').src = ESPERA_SVG;
+    $('qrBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    disparar(WORKFLOW_CONECTAR, { nova_sessao: true }, 'Trocando de número. O QR novo aparece aqui em uns 40 segundos.');
+  };
+  function listarGrupos() {
+    const s = ultimoStatus || {};
+    const ativos = new Set((s.grupos || []).filter((g) => g.ativo && g.id).map((g) => g.id));
+    const q = $('gBusca').value.trim().toLowerCase();
+    const lista = (s.disponiveis || []).filter((d) => !q || d.nome.toLowerCase().includes(q));
+    $('gLista').innerHTML = lista.length ? lista.map((d) => `
+      <label class="gitem"><input type="checkbox" value="${esc(d.id)}" ${ativos.has(d.id) || (($('gLista').dataset.marcados || '').split('|').includes(d.id)) ? 'checked' : ''}>
+      <span>${esc(d.nome)}</span><span class="pill mini ${d.tipo === 'COMUNIDADE' ? 'info' : d.tipo === 'CANAL' ? 'ok' : 'neutro'} tipo">${d.tipo === 'COMUNIDADE' ? 'Comunidade' : d.tipo === 'CANAL' ? 'Canal' : 'Grupo'}</span></label>`).join('')
+      : '<div class="vazio">Nenhum grupo encontrado.</div>';
+  }
+  $('btnGrupos').onclick = () => {
+    if (!(ultimoStatus && (ultimoStatus.disponiveis || []).length)) {
+      aviso('Ainda não tenho a lista de grupos. Clique em 📡 Conectar WhatsApp e, quando terminar, tente de novo.', 'alerta', 8);
+      return;
+    }
+    $('gBusca').value = ''; $('gLista').dataset.marcados = '';
+    listarGrupos(); $('dlgGrupos').showModal();
+  };
+  $('gBusca').oninput = () => {
+    $('gLista').dataset.marcados = [...$('gLista').querySelectorAll('input:checked')].map((i) => i.value).join('|');
+    listarGrupos();
+  };
+  $('gFechar').onclick = () => $('dlgGrupos').close();
+  $('gAddCanal').onclick = () => {
+    const link = $('gCanal').value.trim();
+    if (!/whatsapp\.com\/channel\/[\w-]+/.test(link)) { aviso('Cole o link do canal, no formato https://whatsapp.com/channel/…', 'erro'); return; }
+    $('dlgGrupos').close();
+    disparar(WORKFLOW_CONECTAR, { nova_sessao: false, canal: link }, 'Buscando o canal. Em uns 60 segundos, abra "Escolher grupos" de novo: ele aparece na lista pra marcar.');
+  };
+  $('gSalvar').onclick = () => {
+    const marcados = new Set(($('gLista').dataset.marcados || '').split('|').filter(Boolean));
+    $('gLista').querySelectorAll('input').forEach((i) => { if (i.checked) marcados.add(i.value); else marcados.delete(i.value); });
+    if (!marcados.size && !confirm('Nenhum grupo marcado. Os disparos vão parar de sair. Confirmar?')) return;
+    $('dlgGrupos').close();
+    disparar(WORKFLOW_GRUPOS, { selecao: JSON.stringify([...marcados]) }, `Salvando ${marcados.size} destino(s). Em uns 40 segundos a lista de Canais atualiza.`);
+  };
   $('btnPausar').onclick = async () => {
     const acao = workflowAtivo ? 'disable' : 'enable';
     if (acao === 'disable' && !confirm('Pausar o agendamento? Nada será enviado até retomar.')) return;
@@ -591,10 +695,10 @@ body.sinal #scan,body.sinal #grain{display:none}
     try {
       const s = await carregarStatus();
       pintarStatus(s);
-      clearTimeout(timer); timer = setTimeout(atualizar, s.whatsapp === 'AGUARDANDO_QR' ? 8000 : 60000);
+      clearTimeout(timer); timer = setTimeout(atualizar, (s.whatsapp === 'AGUARDANDO_QR' || Date.now() < sintonizandoAte) ? 5000 : 60000);
     } catch (e) {
-      if (e.message === 'SEM_SENHA') { aviso('Digite a senha do painel em ⚙ Ajustes.', 'alerta', 0); abrirConfig(); }
-      else if (e.message === 'SENHA_ERRADA') { aviso('Senha do painel incorreta.', 'erro', 0); abrirConfig(); }
+      if (e.message === 'SEM_SENHA') { $('atualizado').textContent = 'Digite a senha do painel em ⚙ Ajustes.'; if (!window._pediuSenha) { window._pediuSenha = true; abrirConfig(); } }
+      else if (e.message === 'SENHA_ERRADA') { $('atualizado').textContent = '🔒 Senha do painel diferente da PANEL_SENHA do GitHub — status trancado (botões funcionam).'; }
       else $('atualizado').textContent = e.message;
       clearTimeout(timer); timer = setTimeout(atualizar, 60000);
     }
@@ -613,6 +717,8 @@ body.sinal #scan,body.sinal #grain{display:none}
     guardar.set('token', $('cfgToken').value.trim());
     branchPadrao = null; $('dlgConfig').close(); $('msg').classList.remove('show'); chiado(); atualizar();
   };
+  $('cfgVer').onclick = () => { const i = $('cfgToken'); i.type = i.type === 'password' ? 'text' : 'password'; $('cfgVer').textContent = i.type === 'password' ? '👁 Mostrar' : '🙈 Esconder'; };
+  $('cfgCopiar').onclick = async () => { try { await navigator.clipboard.writeText($('cfgToken').value); $('cfgCopiar').textContent = 'Copiado ✓'; setTimeout(() => { $('cfgCopiar').textContent = 'Copiar'; }, 2000); } catch { $('cfgToken').type = 'text'; $('cfgToken').select(); } };
   $('cfgSair').onclick = () => { guardar.limpar(); $('dlgConfig').close(); location.reload(); };
 
   atualizar();
