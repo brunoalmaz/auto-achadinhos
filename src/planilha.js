@@ -237,6 +237,8 @@ export function lerConfig(linhas) {
     repostValidadeDias: num('REPOST_VALIDADE_DIAS', 30),
     pausaMinSeg: num('PAUSA_MIN_SEG', 20),
     pausaMaxSeg: num('PAUSA_MAX_SEG', 60),
+    atrasoInicialMaxSeg: num('ATRASO_INICIAL_MAX_SEG', 0),
+    janelaMin: num('JANELA_MIN', 60),
     pausaDestinoMinSeg: num('PAUSA_DESTINO_MIN_SEG', 5),
     pausaDestinoMaxSeg: num('PAUSA_DESTINO_MAX_SEG', 15),
     canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
