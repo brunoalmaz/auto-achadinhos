@@ -9,7 +9,7 @@ import { criarAuth, Planilha } from './planilha.js';
 import { agoraSP, esperar, aleatorioEntre } from './util.js';
 import { enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
 import { montarMensagem, sortearModelo } from './mensagem.js';
-import { conectar, desconectar, localizarGrupos, enviarPost, SemSessaoError, DeslogadoError } from './whatsapp.js';
+import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, SemSessaoError, DeslogadoError } from './whatsapp.js';
 import { publicarStatus } from './status.js';
 
 const MODO = (process.env.MODO || 'envio').toLowerCase();
@@ -43,7 +43,9 @@ function resumoStatus(dados, agora, extra = {}) {
 }
 
 async function sincronizarGrupos(sock, planilha, grupos, dados) {
-  const { achados, disponiveis } = await localizarGrupos(sock, grupos);
+  const { achados, disponiveis: soGrupos } = await localizarGrupos(sock, grupos);
+  const canais = dados?.config?.canais?.length ? await lerCanais(sock, dados.config.canais) : [];
+  const disponiveis = [...canais, ...soGrupos];
   await planilha.gravarDisponiveis(disponiveis, agoraSP().dataHoraTexto);
   if (dados) dados.disponiveis = disponiveis;
   const escrita = [];
@@ -64,6 +66,11 @@ async function sincronizarGrupos(sock, planilha, grupos, dados) {
 }
 
 async function modoLogin(planilha, dados, agora) {
+  const canalNovo = String(process.env.CANAL || '').trim();
+  if (canalNovo) {
+    console.log(`Adicionando canal: ${canalNovo}`);
+    dados.config.canais = await planilha.adicionarCanal(canalNovo);
+  }
   console.log('Gerando QR Code. No celular: WhatsApp > Aparelhos conectados > Conectar aparelho.\n');
   const { sock } = await conectar({
     modoLogin: true,
