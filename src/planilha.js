@@ -92,7 +92,7 @@ export class Planilha {
   async gravarGrupos(selecao) {
     await this.sheets.spreadsheets.values.clear({ spreadsheetId: this.id, range: 'Grupos!A2:C' });
     await this.sheets.spreadsheets.values.clear({ spreadsheetId: this.id, range: 'Grupos!E2:E' });
-    const linhas = selecao.map((g) => [g.nome, g.tipo === 'COMUNIDADE' ? 'COMUNIDADE' : 'GRUPO', g.id, true, 'escolhido no painel']);
+    const linhas = selecao.map((g) => [g.nome, ['COMUNIDADE', 'CANAL'].includes(g.tipo) ? g.tipo : 'GRUPO', g.id, true, 'escolhido no painel']);
     const vazias = Array.from({ length: Math.max(0, 30 - linhas.length) }, () => ['', '', '', false, '']);
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: this.id,
@@ -100,6 +100,24 @@ export class Planilha {
       valueInputOption: 'RAW',
       requestBody: { values: [...linhas, ...vazias] },
     });
+  }
+
+  /** Guarda o link de um canal na linha CANAIS da aba Config. */
+  async adicionarCanal(link) {
+    const r = await this.sheets.spreadsheets.values.get({ spreadsheetId: this.id, range: 'Config!A1:B' });
+    const linhas = r.data.values || [];
+    const i = linhas.findIndex((l) => String(l[0] || '').trim().toUpperCase() === 'CANAIS');
+    const atuais = i >= 0 ? String(linhas[i][1] || '').split(/[\s,;]+/).filter(Boolean) : [];
+    if (atuais.includes(link)) return atuais;
+    const novos = [...atuais, link];
+    const linha = i >= 0 ? i + 1 : linhas.length + 1;
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.id,
+      range: `Config!A${linha}:C${linha}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['CANAIS', novos.join(', '), 'Links dos canais do WhatsApp (o número precisa ser admin). Adicione pelo painel.']] },
+    });
+    return novos;
   }
 
   async anexarLog(linhas) {
@@ -221,6 +239,7 @@ export function lerConfig(linhas) {
     pausaMaxSeg: num('PAUSA_MAX_SEG', 60),
     pausaDestinoMinSeg: num('PAUSA_DESTINO_MIN_SEG', 5),
     pausaDestinoMaxSeg: num('PAUSA_DESTINO_MAX_SEG', 15),
+    canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
   };
 }
 
