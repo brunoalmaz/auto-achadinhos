@@ -107,6 +107,30 @@ export async function localizarGrupos(sock, grupos) {
   return { achados, disponiveis };
 }
 
+/**
+ * Canais do WhatsApp: o WhatsApp não deixa listar, então o bot acha cada canal pelo link
+ * (whatsapp.com/channel/CODIGO). Só dá pra postar se o número for admin/dono do canal.
+ */
+export async function lerCanais(sock, links) {
+  const canais = [];
+  for (const link of links) {
+    const codigo = String(link).match(/channel\/([\w-]+)/)?.[1] || String(link).trim();
+    if (!codigo) continue;
+    try {
+      const m = await sock.newsletterMetadata('invite', codigo);
+      if (!m?.id) throw new Error('canal não encontrado');
+      const papel = String(m.viewer_metadata?.role || '').toUpperCase();
+      const nome = m.thread_metadata?.name?.text || m.name || codigo;
+      const admin = ['ADMIN', 'OWNER'].includes(papel);
+      console.log(`  ${admin ? '✅' : '⚠️ '} Canal "${nome}" (${papel || 'sem papel'})${admin ? '' : ' — o número precisa ser admin do canal pra postar'}`);
+      if (admin) canais.push({ nome, tipo: 'CANAL', id: m.id });
+    } catch (e) {
+      console.log(`  ❌ Canal ${codigo}: ${e.message}`);
+    }
+  }
+  return canais;
+}
+
 export async function enviarPost(sock, jid, { texto, imagem }) {
   if (imagem) return sock.sendMessage(jid, { image: imagem, caption: texto });
   return sock.sendMessage(jid, { text: texto });
