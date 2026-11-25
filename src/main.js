@@ -136,6 +136,7 @@ async function modoEnvio(planilha, dados, agora) {
   if (!DRY_RUN && !FORCAR && config.atrasoInicialMaxSeg > 0) {
     const atraso = aleatorioEntre(0, config.atrasoInicialMaxSeg);
     console.log(`Horário sorteado: 1º achadinho daqui a ${Math.round(atraso / 60)} min.`);
+    await avisarProximo(status, '1º', atraso);
     await esperar(atraso * 1000);
   }
   if (!DRY_RUN) {
@@ -157,7 +158,11 @@ async function modoEnvio(planilha, dados, agora) {
   const { colunas } = dados;
   try {
     for (const [i, oferta] of escolhidas.entries()) {
-      if (i > 0) await esperar(aleatorioEntre(config.pausaMinSeg, config.pausaMaxSeg) * 1000);
+      if (i > 0) {
+        const pausa = aleatorioEntre(config.pausaMinSeg, config.pausaMaxSeg);
+        await avisarProximo(status, `${i + 1}º`, pausa);
+        await esperar(pausa * 1000);
+      }
       const texto = montarMensagem(sortearModelo(dados.modelos), oferta);
       let imagem = null;
       let avisoImagem = '';
@@ -251,3 +256,12 @@ main().then(
   () => process.exit(0),
   (e) => { console.error(e?.stack || e); process.exit(1); },
 );
+
+/** Mostra no painel o horário sorteado do próximo achadinho. */
+async function avisarProximo(status, qual, segundos) {
+  const hora = new Date(Date.now() + segundos * 1000)
+    .toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+  try {
+    await status({ ultima_execucao: { modo: 'envio', resultado: `⏳ ${qual} achadinho às ${hora}`, detalhe: '' } });
+  } catch { /* painel é opcional */ }
+}
