@@ -203,6 +203,15 @@ async function modoEnvio(planilha, dados, agora) {
         if (colunas.ultimoEnvio) escrita.push({ range: `Ofertas!${colunas.ultimoEnvio}${oferta.linha}`, valor: agoraSP().dataHoraTexto });
         if (colunas.qtdEnvios) escrita.push({ range: `Ofertas!${colunas.qtdEnvios}${oferta.linha}`, valor: oferta.qtdEnvios + 1 });
       }
+      // Grava na planilha logo depois de cada achadinho (não só no fim da rodada).
+      try {
+        await planilha.escreverCelulas(escrita);
+        escrita.length = 0;
+        await planilha.anexarLog(log);
+        log.length = 0;
+      } catch (e) {
+        console.log(`   ⚠️ não consegui gravar na planilha agora: ${e.message}`);
+      }
     }
   } finally {
     if (sock) await desconectar(sock);
