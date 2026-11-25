@@ -1,0 +1,40 @@
+name: Teste Canal
+
+on:
+  workflow_dispatch:
+    inputs:
+      canal:
+        description: 'Link do canal de teste'
+        type: string
+        required: true
+
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --omit=dev --no-audit --no-fund
+      - name: Restaurar sessão do WhatsApp
+        uses: actions/cache/restore@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}
+          restore-keys: wa-auth-
+      - name: Enviar testes
+        run: node src/testeCanal.js
+        env:
+          CANAL: ${{ inputs.canal }}
+      - name: Salvar sessão do WhatsApp
+        if: always() && hashFiles('auth/creds.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}-${{ github.run_attempt }}
