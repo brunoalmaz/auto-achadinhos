@@ -50,15 +50,18 @@ export class Planilha {
   async carregar() {
     const res = await this.sheets.spreadsheets.values.batchGet({
       spreadsheetId: this.id,
-      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F'],
+      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C'],
     });
-    const [ofertas, grupos, config, modelos, log] = res.data.valueRanges.map((v) => v.values || []);
+    const [ofertas, grupos, config, modelos, log, disponiveis = []] = res.data.valueRanges.map((v) => v.values || []);
     return {
       ...lerOfertas(ofertas),
       grupos: lerGrupos(grupos),
       config: lerConfig(config),
       modelos: lerModelos(modelos),
       log: lerLog(log),
+      disponiveis: disponiveis.slice(1)
+        .filter((l) => l[2])
+        .map((l) => ({ nome: String(l[0] ?? ''), tipo: String(l[1] ?? 'GRUPO'), id: String(l[2]) })),
     };
   }
 
@@ -70,6 +73,32 @@ export class Planilha {
         valueInputOption: 'USER_ENTERED',
         data: atualizacoes.map(({ range, valor }) => ({ range, values: [[valor]] })),
       },
+    });
+  }
+
+  /** Guarda a lista de grupos/comunidades que o número participa (pro painel mostrar). */
+  async gravarDisponiveis(lista, quando) {
+    await this.sheets.spreadsheets.values.clear({ spreadsheetId: this.id, range: 'Disponiveis!A2:D' });
+    if (!lista.length) return;
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.id,
+      range: 'Disponiveis!A2',
+      valueInputOption: 'RAW',
+      requestBody: { values: lista.map((d) => [d.nome, d.tipo, d.id, quando]) },
+    });
+  }
+
+  /** Substitui a aba Grupos pela seleção feita no painel. */
+  async gravarGrupos(selecao) {
+    await this.sheets.spreadsheets.values.clear({ spreadsheetId: this.id, range: 'Grupos!A2:C' });
+    await this.sheets.spreadsheets.values.clear({ spreadsheetId: this.id, range: 'Grupos!E2:E' });
+    const linhas = selecao.map((g) => [g.nome, g.tipo === 'COMUNIDADE' ? 'COMUNIDADE' : 'GRUPO', g.id, true, 'escolhido no painel']);
+    const vazias = Array.from({ length: Math.max(0, 30 - linhas.length) }, () => ['', '', '', false, '']);
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.id,
+      range: 'Grupos!A2',
+      valueInputOption: 'RAW',
+      requestBody: { values: [...linhas, ...vazias] },
     });
   }
 
