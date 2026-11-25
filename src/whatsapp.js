@@ -95,11 +95,15 @@ export async function localizarGrupos(sock, grupos) {
     }
     achados.push({ ...g, jidEncontrado: meta?.id || '' });
   }
-  const disponiveis = todos.map((m) => ({
-    nome: m.subject,
-    tipo: m.isCommunity ? 'COMUNIDADE' : m.isCommunityAnnounce ? 'AVISOS DA COMUNIDADE' : 'GRUPO',
-    id: m.id,
-  }));
+  // Lista do que dá pra postar: grupos comuns e o grupo de avisos de cada comunidade
+  // (a comunidade em si não recebe mensagem; quem recebe é o grupo de avisos dela).
+  const porId = Object.fromEntries(todos.map((m) => [m.id, m]));
+  const disponiveis = todos
+    .filter((m) => !m.isCommunity)
+    .map((m) => (m.isCommunityAnnounce
+      ? { nome: porId[m.linkedParent]?.subject || m.subject, tipo: 'COMUNIDADE', id: m.id }
+      : { nome: m.subject, tipo: 'GRUPO', id: m.id }))
+    .sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nome.localeCompare(b.nome, 'pt-BR'));
   return { achados, disponiveis };
 }
 
