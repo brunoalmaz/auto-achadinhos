@@ -4,10 +4,15 @@ const HORA = 3600 * 1000;
 const DIA = 24 * HORA;
 
 /** Linhas de oferta enviadas com sucesso hoje (pelo Log). */
-export function enviadasHoje(log, hojeTexto) {
+export function enviadasHoje(log, hojeTexto, lerData) {
   const s = new Set();
+  const [d, m, a] = hojeTexto.split('/').map(Number);
   for (const l of log) {
-    if (l.resultado === 'OK' && l.dataHora.startsWith(hojeTexto) && l.linha) s.add(l.linha);
+    const dt = lerData ? lerData(l.dataHora) : null;
+    // Compara o dia em horário de SP (UTC-3).
+    const sp = dt && new Date(dt.getTime() - 3 * 3600000);
+    const ehHoje = sp ? (sp.getUTCDate() === d && sp.getUTCMonth() + 1 === m && sp.getUTCFullYear() === a) : l.dataHora.startsWith(hojeTexto);
+    if (l.resultado === 'OK' && ehHoje && l.linha) s.add(l.linha);
   }
   return s;
 }
