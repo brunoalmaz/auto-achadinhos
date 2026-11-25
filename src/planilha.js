@@ -125,7 +125,7 @@ export class Planilha {
     await this.sheets.spreadsheets.values.append({
       spreadsheetId: this.id,
       range: 'Log!A:F',
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: linhas },
     });
