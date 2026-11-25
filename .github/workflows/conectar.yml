@@ -11,6 +11,11 @@ on:
         description: 'Apagar a sessão antiga e começar do zero'
         type: boolean
         default: false
+      canal:
+        description: 'Link de um canal do WhatsApp pra adicionar (opcional)'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: whatsapp
@@ -41,6 +46,7 @@ jobs:
         run: node src/main.js
         env:
           MODO: login
+          CANAL: ${{ inputs.canal }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
           PANEL_TOKEN: ${{ secrets.PANEL_TOKEN }}
