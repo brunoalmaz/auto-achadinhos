@@ -6,8 +6,8 @@
 import qrcodeTerminal from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import { criarAuth, Planilha } from './planilha.js';
-import { agoraSP, esperar, aleatorioEntre } from './util.js';
-import { enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
+import { agoraSP, esperar, aleatorioEntre, lerDataBR } from './util.js';
+import { enviadasUltimaHora, enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
 import { montarMensagem, sortearModelo } from './mensagem.js';
 import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, SemSessaoError, DeslogadoError } from './whatsapp.js';
 import { publicarStatus } from './status.js';
@@ -116,7 +116,14 @@ async function modoEnvio(planilha, dados, agora) {
   }
 
   const hoje = enviadasHoje(dados.log, agora.hojeTexto);
-  const n = FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size);
+  // Trava: nunca mais que postsPorExecucao (2) achadinhos em 60 minutos, mesmo com disparo manual.
+  const naHora = enviadasUltimaHora(dados.log, agora.data, lerDataBR);
+  const livresNaHora = Math.max(0, config.postsPorExecucao - naHora);
+  const n = Math.min(livresNaHora, FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size));
+  if (!n && naHora) {
+    console.log(`Já saíram ${naHora} achadinho(s) na última hora. Esperando a próxima rodada.`);
+    return status({ ultima_execucao: { modo: MODO, resultado: 'LIMITE_HORA', detalhe: `${naHora} na última hora` } });
+  }
   const escolhidas = escolherOfertas(dados.ofertas, { n, agora: agora.data, config, hoje });
   console.log(`Hoje: ${hoje.size}/${config.postsPorDia}. Esta rodada: ${escolhidas.length} oferta(s).`);
   if (!escolhidas.length) {
