@@ -5,7 +5,10 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
+  proto,
+  generateMessageID,
 } from 'baileys';
+import { createHash } from 'node:crypto';
 import pino from 'pino';
 import { normalizar, esperar } from './util.js';
 
@@ -136,6 +139,53 @@ export async function lerCanais(sock, links) {
 }
 
 export async function enviarPost(sock, jid, { texto, imagem }) {
+  if (imagem && jid.endsWith('@newsletter')) return enviarImagemCanal(sock, jid, imagem, texto);
   if (imagem) return sock.sendMessage(jid, { image: imagem, caption: texto });
   return sock.sendMessage(jid, { text: texto });
+}
+
+function tipoImagem(buf) {
+  if (buf[0] === 0x89 && buf[1] === 0x50) return 'image/png';
+  if (buf[0] === 0x52 && buf[1] === 0x49) return 'image/webp';
+  return 'image/jpeg';
+}
+
+/**
+ * Canal (newsletter): a imagem precisa subir no caminho próprio de canal
+ * (/newsletter/newsletter-image) e a mensagem leva o "media_id" devolvido.
+ * Sem isso o WhatsApp descarta a imagem em silêncio.
+ */
+async function enviarImagemCanal(sock, jid, imagem, legenda) {
+  const buf = Buffer.isBuffer(imagem) ? imagem : Buffer.from(imagem);
+  const sha = createHash('sha256').update(buf).digest();
+  const token = sha.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  let info = await sock.refreshMediaConn(false);
+  let resp = null;
+  for (const { hostname } of info.hosts) {
+    const url = `https://${hostname}/newsletter/newsletter-image/${token}?auth=${encodeURIComponent(info.auth)}&token=${token}`;
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        body: buf,
+        headers: { 'Content-Type': 'application/octet-stream', Origin: 'https://web.whatsapp.com' },
+      });
+      const j = await r.json();
+      if (j?.direct_path || j?.url) { resp = j; break; }
+      info = await sock.refreshMediaConn(true);
+    } catch { /* tenta o próximo host */ }
+  }
+  if (!resp) throw new Error('upload da imagem do canal falhou');
+  const msg = proto.Message.fromObject({
+    imageMessage: {
+      url: resp.url,
+      directPath: resp.direct_path,
+      mimetype: tipoImagem(buf),
+      fileSha256: sha,
+      fileLength: buf.length,
+      caption: legenda || undefined,
+    },
+  });
+  const id = generateMessageID();
+  await sock.relayMessage(jid, msg, { messageId: id, additionalAttributes: resp.handle ? { media_id: resp.handle } : {} });
+  return { key: { id, remoteJid: jid } };
 }
