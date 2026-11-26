@@ -242,6 +242,9 @@ export function lerConfig(linhas) {
     pausaDestinoMinSeg: num('PAUSA_DESTINO_MIN_SEG', 5),
     pausaDestinoMaxSeg: num('PAUSA_DESTINO_MAX_SEG', 15),
     canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
+    // Ex.: "TER=17,QUI=17" → nesses dias nada sai a partir das 17:00.
+    fimPorDia: Object.fromEntries(String(c.FIM_POR_DIA || '').toUpperCase().split(/[,;\s]+/)
+      .map((x) => x.split('=')).filter(([d, h]) => d && Number.isFinite(+h)).map(([d, h]) => [normalizar(d).toUpperCase(), +h])),
   };
 }
 
