@@ -95,6 +95,8 @@ async function modoLogin(planilha, dados, agora) {
 
 function dentroDoHorario(config, agora) {
   if (!config.dias.includes(agora.diaSemana)) return `hoje (${agora.diaSemana}) não está em DIAS_SEMANA`;
+  const corte = config.fimPorDia?.[agora.diaSemana];
+  if (corte != null && agora.hora >= corte) return `${agora.diaSemana} encerra às ${corte}h (FIM_POR_DIA)`;
   if (agora.hora < config.horaInicio || agora.hora > config.horaFim) {
     return `fora do horário (${agora.hora}h; janela ${config.horaInicio}h-${config.horaFim}h)`;
   }
@@ -162,6 +164,11 @@ async function modoEnvio(planilha, dados, agora) {
         const pausa = aleatorioEntre(config.pausaMinSeg, config.pausaMaxSeg);
         await avisarProximo(status, `${i + 1}º`, pausa);
         await esperar(pausa * 1000);
+      }
+      const corteHoje = config.fimPorDia?.[agoraSP().diaSemana];
+      if (!FORCAR && corteHoje != null && agoraSP().hora >= corteHoje) {
+        console.log(`Passou das ${corteHoje}h (FIM_POR_DIA): parando a rodada.`);
+        break;
       }
       const texto = montarMensagem(sortearModelo(dados.modelos), oferta);
       let imagem = null;
