@@ -121,9 +121,12 @@ async function modoEnvio(planilha, dados, agora) {
   // Trava: nunca mais que postsPorExecucao (2) achadinhos em 60 minutos, mesmo com disparo manual.
   // Janela de 45 min (com 60 min de janela): como os horários são sorteados, o 2º post da rodada anterior
   // pode ter saído há 40–50 min; contar 60 min cortaria a rodada nova pela metade.
-  const naHora = enviadasUltimaHora(dados.log, agora.data, lerDataBR, config.janelaMin * 0.75 * 60_000);
+  // Disparo manual: trava de 2 a cada 45 min. Automático: nunca pula a rodada; só espera o respiro mínimo depois do último envio.
+  const naHora = FORCAR ? enviadasUltimaHora(dados.log, agora.data, lerDataBR, config.janelaMin * 0.75 * 60_000) : 0;
   const livresNaHora = Math.max(0, config.postsPorExecucao - naHora);
   const n = Math.min(livresNaHora, FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size));
+  let ultimoEnvio = 0;
+  for (const l of dados.log) { const d = l.resultado === 'OK' && lerDataBR(l.dataHora); if (d && d.getTime() > ultimoEnvio) ultimoEnvio = d.getTime(); }
   if (!n && naHora) {
     console.log(`Já saíram ${naHora} achadinho(s) na última hora. Esperando a próxima rodada.`);
     return status({ ultima_execucao: { modo: MODO, resultado: 'LIMITE_HORA', detalhe: `${naHora} na última hora` } });
@@ -136,7 +139,8 @@ async function modoEnvio(planilha, dados, agora) {
 
   let sock = null;
   if (!DRY_RUN && !FORCAR && config.atrasoInicialMaxSeg > 0) {
-    const atraso = aleatorioEntre(0, config.atrasoInicialMaxSeg);
+    const respiro = Math.ceil(config.pausaMinSeg - (Date.now() - ultimoEnvio) / 1000);
+    const atraso = Math.max(aleatorioEntre(0, config.atrasoInicialMaxSeg), respiro);
     console.log(`Horário sorteado: 1º achadinho daqui a ${Math.round(atraso / 60)} min.`);
     await avisarProximo(status, '1º', atraso);
     await esperar(atraso * 1000);
