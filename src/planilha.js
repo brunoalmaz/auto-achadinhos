@@ -50,15 +50,16 @@ export class Planilha {
   async carregar() {
     const res = await this.sheets.spreadsheets.values.batchGet({
       spreadsheetId: this.id,
-      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C'],
+      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C', 'Enquetes!A1:G'],
     });
-    const [ofertas, grupos, config, modelos, log, disponiveis = []] = res.data.valueRanges.map((v) => v.values || []);
+    const [ofertas, grupos, config, modelos, log, disponiveis = [], enquetes = []] = res.data.valueRanges.map((v) => v.values || []);
     return {
       ...lerOfertas(ofertas),
       grupos: lerGrupos(grupos),
       config: lerConfig(config),
       modelos: lerModelos(modelos),
       log: lerLog(log),
+      enquetes: lerEnquetes(enquetes),
       disponiveis: disponiveis.slice(1)
         .filter((l) => l[2])
         .map((l) => ({ nome: String(l[0] ?? ''), tipo: String(l[1] ?? 'GRUPO'), id: String(l[2]) })),
@@ -239,6 +240,7 @@ export function lerConfig(linhas) {
     pausaMaxSeg: num('PAUSA_MAX_SEG', 60),
     atrasoInicialMaxSeg: num('ATRASO_INICIAL_MAX_SEG', 0),
     janelaMin: num('JANELA_MIN', 60),
+    intervaloMin: num('INTERVALO_MIN', 0),
     pausaDestinoMinSeg: num('PAUSA_DESTINO_MIN_SEG', 5),
     pausaDestinoMaxSeg: num('PAUSA_DESTINO_MAX_SEG', 15),
     canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
@@ -252,6 +254,20 @@ export function lerModelos(linhas) {
   return linhas.slice(1)
     .filter((l) => verdadeiro(l[1]) && String(l[2] ?? '').trim())
     .map((l) => ({ nome: String(l[0]).trim(), texto: String(l[2]) }));
+}
+
+/** Aba Enquetes: Nº | Data | Pergunta | Opções (separadas por |) | Várias respostas | Status | Enviada em */
+export function lerEnquetes(linhas) {
+  return linhas.slice(1).map((l, i) => ({
+    linha: i + 2,
+    num: String(l[0] ?? ''),
+    data: String(l[1] ?? ''),
+    pergunta: String(l[2] ?? '').trim(),
+    opcoes: String(l[3] ?? '').split('|').map((o) => o.trim()).filter(Boolean),
+    varias: /^(true|sim|verdadeiro|1)$/i.test(String(l[4] ?? '').trim()),
+    status: String(l[5] ?? '').toUpperCase(),
+    enviadaEm: String(l[6] ?? ''),
+  })).filter((e) => e.pergunta && e.opcoes.length >= 2);
 }
 
 export function lerLog(linhas) {
