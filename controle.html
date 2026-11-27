@@ -54,7 +54,7 @@ td.p{max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
 .it:first-child{border-top:0}
 .it .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.it .d{font-size:12px;color:var(--mut)}
+.it .d{font-size:12px;color:var(--mut);margin-top:2px;display:flex;gap:6px;align-items:center}
 .vazio{color:var(--mut);font-size:13px;padding:6px 0}
 .cab{display:flex;align-items:center;justify-content:space-between;gap:8px}
 #qrBox{display:none;align-items:center;text-align:center}
@@ -142,13 +142,18 @@ input:focus,textarea:focus{outline:none;border-color:var(--pink)}
 </dialog>
 
 <dialog id="dlgEnq">
-  <h2>Enquete</h2>
+  <h2 id="eTit">Enquete</h2>
   <label class="f">Pergunta</label>
   <input id="eP" maxlength="255">
   <label class="f">Opções (uma por linha)</label>
   <textarea id="eO"></textarea>
-  <label class="chk"><input type="checkbox" id="eV"> Permitir várias respostas</label>
-  <div class="rodape"><button class="btn" id="eFechar">Cancelar</button><button class="btn pri" id="eEnviar">Enviar</button></div>
+  <div class="linha" style="margin-top:4px">
+    <div style="flex:1"><label class="f">Data</label><input id="eD" type="date"></div>
+    <div style="flex:1"><label class="f">Hora</label><input id="eH" type="time" value="12:00"></div>
+  </div>
+  <label class="chk"><input type="checkbox" id="eV"> Várias respostas</label>
+  <label class="chk"><input type="checkbox" id="eR"> Pronta (sai sozinha na data e hora)</label>
+  <div class="rodape"><button class="btn" id="eFechar">Cancelar</button><span class="sep"></span><button class="btn" id="eEnviar">Enviar agora</button><button class="btn pri" id="eSalvar">Salvar</button></div>
 </dialog>
 
 <dialog id="dlgConfig">
@@ -165,7 +170,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--pink)}
   const $ = (id) => document.getElementById(id);
   const REPO = 'brunoalmaz/auto-achadinhos';
   const PAINEL = 'brunoalmaz/achadinhos-painel';
-  const WF = { disparo: 'disparo.yml', conectar: 'conectar.yml', grupos: 'grupos.yml', enquete: 'enquete.yml' };
+  const WF = { disparo: 'disparo.yml', conectar: 'conectar.yml', grupos: 'grupos.yml', enquete: 'enquete.yml', editar: 'editar-enquete.yml' };
   const BOTOES = ['btnDisparar', 'btnSimular', 'btnConectar', 'btnTrocar', 'btnPausar', 'btnGrupos', 'btnNovaEnq'];
   let S = null, ativo = null, timer = null, sintonizando = 0;
 
@@ -247,8 +252,9 @@ input:focus,textarea:focus{outline:none;border-color:var(--pink)}
     const gr = (s.grupos || []).filter((g) => g.ativo);
     $('lsGrupos').innerHTML = gr.length ? gr.map((g) => `<div class="it"><span class="n">${esc(g.nome)}</span><span class="tag">${g.tipo === 'CANAL' ? 'canal' : g.tipo === 'COMUNIDADE' ? 'comunidade' : 'grupo'}</span></div>`).join('') : '<div class="vazio">Nenhum</div>';
 
-    const enq = (s.enquetes || []).filter((e) => !ENQ_OK(e)).slice(0, 5);
-    $('lsEnq').innerHTML = enq.length ? enq.map((e) => `<div class="it"><span style="min-width:0"><div class="n" title="${esc(e.pergunta)}">${esc(e.pergunta)}</div><div class="d">${esc(e.data || 'extra')}</div></span><button class="btn min" data-enq="${e.linha}">Enviar</button></div>`).join('') : '<div class="vazio">Nenhuma pendente</div>';
+    const ord = (e) => { const m = String(e.data).match(/(\d+)\/(\d+)\/(\d+)/); return m ? `${m[3]}${m[2].padStart(2, '0')}${m[1].padStart(2, '0')}${e.hora || ''}` : '9'; };
+    const enq = (s.enquetes || []).filter((e) => !ENQ_OK(e)).sort((a, b) => ord(a).localeCompare(ord(b))).slice(0, 6);
+    $('lsEnq').innerHTML = enq.length ? enq.map((e) => `<div class="it"><span style="min-width:0;flex:1"><div class="n" title="${esc(e.pergunta)}">${esc(e.pergunta)}</div><div class="d">${e.data ? esc(String(e.data).slice(0, 5)) + ' · ' + esc(String(e.hora || '').slice(0, 5)) : 'sem data'} ${e.pronta ? '<span class="tag ok">pronta</span>' : ''}</div></span><button class="btn min" data-ed="${e.linha}">Editar</button><button class="btn min" data-enq="${e.linha}">Enviar</button></div>`).join('') : '<div class="vazio">Nenhuma pendente</div>';
   }
 
   async function agenda() {
@@ -306,18 +312,41 @@ input:focus,textarea:focus{outline:none;border-color:var(--pink)}
   };
 
   // Enquetes
-  $('lsEnq').onclick = (e) => {
-    const b = e.target.closest('[data-enq]'); if (!b) return;
-    const enq = (S?.enquetes || []).find((x) => String(x.linha) === b.dataset.enq);
-    if (enq && confirm(`Enviar enquete?\n\n${enq.pergunta}\n\n• ${enq.opcoes.join('\n• ')}`)) rodar(WF.enquete, { enquete: String(enq.linha) }, 'Enquete na fila');
-  };
-  $('btnNovaEnq').onclick = () => { $('eP').value = ''; $('eO').value = ''; $('eV').checked = false; $('dlgEnq').showModal(); };
-  $('eFechar').onclick = () => $('dlgEnq').close();
-  $('eEnviar').onclick = () => {
+  let editando = 0;
+  const isoData = (v) => { const m = String(v || '').match(/(\d+)\/(\d+)\/(\d+)/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : ''; };
+  function abrirEnq(e) {
+    editando = e ? e.linha : 0;
+    $('eTit').textContent = e ? 'Editar enquete' : 'Nova enquete';
+    $('eP').value = e?.pergunta || ''; $('eO').value = (e?.opcoes || []).join('\n');
+    $('eD').value = isoData(e?.data); $('eH').value = String(e?.hora || '12:00').slice(0, 5);
+    $('eV').checked = Boolean(e?.varias); $('eR').checked = Boolean(e?.pronta);
+    $('dlgEnq').showModal();
+  }
+  function lerForm() {
     const pergunta = $('eP').value.trim(), opcoes = $('eO').value.split('\n').map((x) => x.trim()).filter(Boolean);
-    if (!pergunta || opcoes.length < 2) return aviso('Pergunta e pelo menos 2 opções', 'erro');
-    if (opcoes.length > 12) return aviso('Máximo de 12 opções', 'erro');
-    $('dlgEnq').close(); rodar(WF.enquete, { enquete: JSON.stringify({ pergunta, opcoes, varias: $('eV').checked }) }, 'Enquete na fila');
+    if (!pergunta || opcoes.length < 2) { aviso('Pergunta e pelo menos 2 opções', 'erro'); return null; }
+    if (opcoes.length > 12) { aviso('Máximo de 12 opções', 'erro'); return null; }
+    const d = $('eD').value.split('-');
+    return { linha: editando, pergunta, opcoes, varias: $('eV').checked, pronta: $('eR').checked, data: d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : '', hora: $('eH').value };
+  }
+  $('lsEnq').onclick = (ev) => {
+    const ed = ev.target.closest('[data-ed]'), en = ev.target.closest('[data-enq]');
+    const id = ed ? ed.dataset.ed : en ? en.dataset.enq : null;
+    const e = (S?.enquetes || []).find((x) => String(x.linha) === id);
+    if (!e) return;
+    if (ed) return abrirEnq(e);
+    if (confirm(`Enviar agora?\n\n${e.pergunta}\n\n• ${e.opcoes.join('\n• ')}`)) rodar(WF.enquete, { enquete: String(e.linha) }, 'Enquete na fila');
+  };
+  $('btnNovaEnq').onclick = () => abrirEnq(null);
+  $('eFechar').onclick = () => $('dlgEnq').close();
+  $('eSalvar').onclick = () => {
+    const f = lerForm(); if (!f) return;
+    if (f.pronta && !f.data) return aviso('Coloque a data pra deixar pronta', 'erro');
+    $('dlgEnq').close(); rodar(WF.editar, { enquete: JSON.stringify(f) }, 'Salvando enquete');
+  };
+  $('eEnviar').onclick = () => {
+    const f = lerForm(); if (!f || !confirm('Enviar agora nos destinos?')) return;
+    $('dlgEnq').close(); rodar(WF.enquete, { enquete: JSON.stringify(f) }, 'Enquete na fila');
   };
 
   // Ajustes
