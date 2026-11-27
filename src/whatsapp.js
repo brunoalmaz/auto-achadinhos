@@ -194,3 +194,8 @@ async function enviarImagemCanal(sock, jid, imagem, legenda) {
   });
   return { key: { id, remoteJid: jid } };
 }
+
+/** Enquete nativa do WhatsApp. varias=true deixa marcar mais de uma opção. */
+export async function enviarEnquete(sock, jid, { pergunta, opcoes, varias }) {
+  return sock.sendMessage(jid, { poll: { name: pergunta, values: opcoes.slice(0, 12), selectableCount: varias ? 0 : 1 } });
+}
