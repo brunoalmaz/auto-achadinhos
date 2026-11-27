@@ -9,7 +9,7 @@ import { criarAuth, Planilha } from './planilha.js';
 import { agoraSP, esperar, aleatorioEntre, lerDataBR } from './util.js';
 import { enviadasUltimaHora, enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
 import { montarMensagem, sortearModelo } from './mensagem.js';
-import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, SemSessaoError, DeslogadoError } from './whatsapp.js';
+import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, enviarEnquete, SemSessaoError, DeslogadoError } from './whatsapp.js';
 import { publicarStatus } from './status.js';
 
 const MODO = (process.env.MODO || 'envio').toLowerCase();
@@ -37,6 +37,7 @@ function resumoStatus(dados, agora, extra = {}) {
     grupos: dados.grupos.map((g) => ({ nome: g.nome, tipo: g.tipo, ativo: g.ativo, conectado: Boolean(g.jid), id: g.jid })),
     disponiveis: dados.disponiveis || [],
     ultimos_envios: dados.log.slice(-15).reverse(),
+    enquetes: (dados.enquetes || []).map((e) => ({ linha: e.linha, num: e.num, data: e.data, pergunta: e.pergunta, opcoes: e.opcoes, varias: e.varias, status: e.status, enviada_em: e.enviadaEm })),
     ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: '' },
     ...extra,
   };
@@ -124,7 +125,11 @@ async function modoEnvio(planilha, dados, agora) {
   // Disparo manual: trava de 2 a cada 45 min. Automático: nunca pula a rodada; só espera o respiro mínimo depois do último envio.
   const naHora = FORCAR ? enviadasUltimaHora(dados.log, agora.data, lerDataBR, config.janelaMin * 0.75 * 60_000) : 0;
   const livresNaHora = Math.max(0, config.postsPorExecucao - naHora);
-  const n = Math.min(livresNaHora, FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size));
+  // Cadência fixa (INTERVALO_MIN, ex.: 25): cada rodada de hora manda quantos couberem até a próxima rodada.
+  const cadencia = !FORCAR && config.intervaloMin > 0;
+  const n = cadencia
+    ? Math.max(0, Math.min(Math.ceil(60 / config.intervaloMin), config.postsPorDia - hoje.size))
+    : Math.min(livresNaHora, FORCAR ? Math.max(1, config.postsPorExecucao) : quantidadeDaRodada(config, hoje.size));
   let ultimoEnvio = 0;
   for (const l of dados.log) { const d = l.resultado === 'OK' && lerDataBR(l.dataHora); if (d && d.getTime() > ultimoEnvio) ultimoEnvio = d.getTime(); }
   if (!n && naHora) {
@@ -138,7 +143,9 @@ async function modoEnvio(planilha, dados, agora) {
   }
 
   let sock = null;
-  if (!DRY_RUN && !FORCAR && config.atrasoInicialMaxSeg > 0) {
+  const inicioRodada = Date.now();
+  let alvo = Math.max(inicioRodada, ultimoEnvio + config.intervaloMin * 60_000);
+  if (!DRY_RUN && !cadencia && !FORCAR && config.atrasoInicialMaxSeg > 0) {
     const respiro = Math.ceil(config.pausaMinSeg - (Date.now() - ultimoEnvio) / 1000);
     const atraso = Math.max(aleatorioEntre(0, config.atrasoInicialMaxSeg), respiro);
     console.log(`Horário sorteado: 1º achadinho daqui a ${Math.round(atraso / 60)} min.`);
@@ -164,7 +171,16 @@ async function modoEnvio(planilha, dados, agora) {
   const { colunas } = dados;
   try {
     for (const [i, oferta] of escolhidas.entries()) {
-      if (i > 0) {
+      if (cadencia && !DRY_RUN) {
+        // Para antes de invadir a próxima rodada (que começa ~60 min depois desta).
+        if (alvo > inicioRodada + 58 * 60_000) break;
+        const falta = Math.max(0, Math.round((alvo - Date.now()) / 1000));
+        if (falta > 0) {
+          await avisarProximo(status, `${i + 1}º`, falta);
+          await esperar(falta * 1000);
+        }
+        alvo = Date.now() + config.intervaloMin * 60_000;
+      } else if (i > 0) {
         const pausa = aleatorioEntre(config.pausaMinSeg, config.pausaMaxSeg);
         await avisarProximo(status, `${i + 1}º`, pausa);
         await esperar(pausa * 1000);
@@ -262,6 +278,49 @@ async function modoGrupos(planilha, dados) {
   await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: `${escolhidos.length} destino(s) salvos` } }));
 }
 
+// Manda uma enquete (linha da aba Enquetes, ou pergunta avulsa em JSON) para os destinos ativos.
+async function modoEnquete(planilha, dados) {
+  const pedido = String(process.env.ENQUETE || '').trim();
+  let enquete;
+  if (pedido.startsWith('{')) {
+    const j = JSON.parse(pedido);
+    enquete = { linha: 0, pergunta: String(j.pergunta || '').trim(), opcoes: (j.opcoes || []).map(String).filter(Boolean), varias: Boolean(j.varias) };
+  } else {
+    enquete = dados.enquetes.find((e) => e.linha === Number(pedido));
+  }
+  if (!enquete?.pergunta || enquete.opcoes.length < 2) throw new Error('Enquete inválida: precisa de pergunta e pelo menos 2 opções.');
+  const destinos = dados.grupos.filter((g) => g.ativo && g.jid);
+  console.log(`Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);
+  const { sock } = await conectar();
+  const log = [];
+  let ok = 0;
+  try {
+    for (const [i, g] of destinos.entries()) {
+      if (i > 0) await esperar(aleatorioEntre(dados.config.pausaDestinoMinSeg, dados.config.pausaDestinoMaxSeg) * 1000);
+      try {
+        await enviarEnquete(sock, g.jid, enquete);
+        ok++;
+        log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ENQUETE', '']);
+        console.log(`   ✅ ${g.nome}`);
+      } catch (e) {
+        log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ERRO', e.message]);
+        console.log(`   ❌ ${g.nome}: ${e.message}`);
+      }
+    }
+  } finally {
+    await desconectar(sock);
+    await planilha.anexarLog(log);
+    if (enquete.linha && ok) {
+      await planilha.escreverCelulas([
+        { range: `Enquetes!F${enquete.linha}`, valor: 'ENVIADA' },
+        { range: `Enquetes!G${enquete.linha}`, valor: agoraSP().dataHoraTexto },
+      ]);
+    }
+    Object.assign(dados, await planilha.carregar());
+    await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: 'enquete', resultado: ok ? 'OK' : 'ERRO', detalhe: `enquete em ${ok} destino(s)` } }));
+  }
+}
+
 async function main() {
   const agora = agoraSP();
   const planilha = new Planilha(criarAuth(), process.env.PLANILHA_ID);
@@ -269,6 +328,7 @@ async function main() {
   console.log(`Achadinhos bot | modo=${MODO}${FORCAR ? ' forçado' : ''}${DRY_RUN ? ' teste' : ''} | ${agora.dataHoraTexto} (${agora.diaSemana})`);
   if (MODO === 'login') await modoLogin(planilha, dados, agora);
   else if (MODO === 'grupos') await modoGrupos(planilha, dados);
+  else if (MODO === 'enquete') await modoEnquete(planilha, dados);
   else await modoEnvio(planilha, dados, agora);
 }
 
