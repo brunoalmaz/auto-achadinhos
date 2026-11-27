@@ -1,0 +1,46 @@
+name: Enviar enquete
+
+on:
+  workflow_dispatch:
+    inputs:
+      enquete:
+        description: 'Linha da aba Enquetes ou JSON {pergunta,opcoes,varias}'
+        type: string
+        required: true
+
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+
+jobs:
+  enquete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --omit=dev --no-audit --no-fund
+      - name: Restaurar sessão do WhatsApp
+        uses: actions/cache/restore@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}
+          restore-keys: wa-auth-
+      - name: Enviar enquete
+        run: node src/main.js
+        env:
+          MODO: enquete
+          ENQUETE: ${{ inputs.enquete }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
+          PANEL_TOKEN: ${{ secrets.PANEL_TOKEN }}
+          PANEL_SENHA: ${{ secrets.PANEL_SENHA }}
+          PANEL_REPO: ${{ vars.PANEL_REPO }}
+      - name: Salvar sessão do WhatsApp
+        if: always() && hashFiles('auth/creds.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}-${{ github.run_attempt }}
