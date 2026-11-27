@@ -37,7 +37,7 @@ function resumoStatus(dados, agora, extra = {}) {
     grupos: dados.grupos.map((g) => ({ nome: g.nome, tipo: g.tipo, ativo: g.ativo, conectado: Boolean(g.jid), id: g.jid })),
     disponiveis: dados.disponiveis || [],
     ultimos_envios: dados.log.slice(-15).reverse(),
-    enquetes: (dados.enquetes || []).map((e) => ({ linha: e.linha, num: e.num, data: e.data, pergunta: e.pergunta, opcoes: e.opcoes, varias: e.varias, status: e.status, enviada_em: e.enviadaEm })),
+    enquetes: (dados.enquetes || []).map((e) => ({ linha: e.linha, num: e.num, data: e.data, hora: e.hora, pergunta: e.pergunta, opcoes: e.opcoes, varias: e.varias, pronta: e.pronta, status: e.status, enviada_em: e.enviadaEm })),
     ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: '' },
     ...extra,
   };
@@ -190,6 +190,12 @@ async function modoEnvio(planilha, dados, agora) {
         console.log(`Passou das ${corteHoje}h (FIM_POR_DIA): parando a rodada.`);
         break;
       }
+      if (!DRY_RUN) {
+        for (const enq of enquetesVencidas(dados)) {
+          try { await mandarEnquete(sock, planilha, dados, enq); } catch (e) { console.log(`   ⚠️ enquete: ${e.message}`); }
+          await esperar(aleatorioEntre(30, 60) * 1000);
+        }
+      }
       const texto = montarMensagem(sortearModelo(dados.modelos), oferta);
       let imagem = null;
       let avisoImagem = '';
@@ -278,7 +284,46 @@ async function modoGrupos(planilha, dados) {
   await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: MODO, resultado: 'OK', detalhe: `${escolhidos.length} destino(s) salvos` } }));
 }
 
-// Manda uma enquete (linha da aba Enquetes, ou pergunta avulsa em JSON) para os destinos ativos.
+// Envia uma enquete para os destinos ativos usando uma conexão já aberta; marca na planilha.
+async function mandarEnquete(sock, planilha, dados, enquete) {
+  const destinos = dados.grupos.filter((g) => g.ativo && g.jid);
+  console.log(`\n📊 Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);
+  const log = [];
+  let ok = 0;
+  for (const [i, g] of destinos.entries()) {
+    if (i > 0) await esperar(aleatorioEntre(dados.config.pausaDestinoMinSeg, dados.config.pausaDestinoMaxSeg) * 1000);
+    try {
+      await enviarEnquete(sock, g.jid, enquete);
+      ok++;
+      log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ENQUETE', '']);
+      console.log(`   ✅ ${g.nome}`);
+    } catch (e) {
+      log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ERRO', e.message]);
+      console.log(`   ❌ ${g.nome}: ${e.message}`);
+    }
+  }
+  await planilha.anexarLog(log);
+  if (enquete.linha && ok) {
+    enquete.status = 'ENVIADA';
+    await planilha.escreverCelulas([
+      { range: `Enquetes!H${enquete.linha}`, valor: 'ENVIADA' },
+      { range: `Enquetes!I${enquete.linha}`, valor: agoraSP().dataHoraTexto },
+    ]);
+  }
+  return ok;
+}
+
+/** Enquetes marcadas como prontas cuja data/hora já chegou. */
+function enquetesVencidas(dados) {
+  const agora = Date.now();
+  return (dados.enquetes || []).filter((e) => {
+    if (!e.pronta || e.status === 'ENVIADA' || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(e.data)) return false;
+    const quando = lerDataBR(`${e.data} ${e.hora || '12:00'}`.trim());
+    return quando && quando.getTime() <= agora;
+  });
+}
+
+// Botão "Enviar" do painel: linha da aba Enquetes, ou pergunta avulsa em JSON.
 async function modoEnquete(planilha, dados) {
   const pedido = String(process.env.ENQUETE || '').trim();
   let enquete;
@@ -289,36 +334,37 @@ async function modoEnquete(planilha, dados) {
     enquete = dados.enquetes.find((e) => e.linha === Number(pedido));
   }
   if (!enquete?.pergunta || enquete.opcoes.length < 2) throw new Error('Enquete inválida: precisa de pergunta e pelo menos 2 opções.');
-  const destinos = dados.grupos.filter((g) => g.ativo && g.jid);
-  console.log(`Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);
   const { sock } = await conectar();
-  const log = [];
   let ok = 0;
   try {
-    for (const [i, g] of destinos.entries()) {
-      if (i > 0) await esperar(aleatorioEntre(dados.config.pausaDestinoMinSeg, dados.config.pausaDestinoMaxSeg) * 1000);
-      try {
-        await enviarEnquete(sock, g.jid, enquete);
-        ok++;
-        log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ENQUETE', '']);
-        console.log(`   ✅ ${g.nome}`);
-      } catch (e) {
-        log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ERRO', e.message]);
-        console.log(`   ❌ ${g.nome}: ${e.message}`);
-      }
-    }
+    ok = await mandarEnquete(sock, planilha, dados, enquete);
   } finally {
     await desconectar(sock);
-    await planilha.anexarLog(log);
-    if (enquete.linha && ok) {
-      await planilha.escreverCelulas([
-        { range: `Enquetes!F${enquete.linha}`, valor: 'ENVIADA' },
-        { range: `Enquetes!G${enquete.linha}`, valor: agoraSP().dataHoraTexto },
-      ]);
-    }
     Object.assign(dados, await planilha.carregar());
     await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: 'enquete', resultado: ok ? 'OK' : 'ERRO', detalhe: `enquete em ${ok} destino(s)` } }));
   }
+}
+
+// Painel "Editar": grava a enquete na planilha (não usa o WhatsApp).
+async function modoEditarEnquete(planilha, dados) {
+  const j = JSON.parse(process.env.ENQUETE || '{}');
+  const opcoes = (j.opcoes || []).map((o) => String(o).trim()).filter(Boolean);
+  if (!String(j.pergunta || '').trim() || opcoes.length < 2) throw new Error('Precisa de pergunta e pelo menos 2 opções.');
+  let linha = Number(j.linha) || 0;
+  if (!linha) linha = Math.max(1, ...dados.enquetes.map((e) => e.linha)) + 1;
+  const num = dados.enquetes.find((e) => e.linha === linha)?.num || String(linha - 1).padStart(2, '0');
+  await planilha.escreverCelulas([
+    { range: `Enquetes!A${linha}`, valor: num },
+    { range: `Enquetes!B${linha}`, valor: String(j.data || '') },
+    { range: `Enquetes!C${linha}`, valor: String(j.hora || '') },
+    { range: `Enquetes!D${linha}`, valor: String(j.pergunta).trim() },
+    { range: `Enquetes!E${linha}`, valor: opcoes.join(' | ') },
+    { range: `Enquetes!F${linha}`, valor: j.varias ? 'TRUE' : 'FALSE' },
+    { range: `Enquetes!G${linha}`, valor: j.pronta ? 'TRUE' : 'FALSE' },
+  ]);
+  console.log(`Enquete salva na linha ${linha}.`);
+  Object.assign(dados, await planilha.carregar());
+  await publicarStatus(resumoStatus(dados, agoraSP(), { whatsapp: 'CONECTADO', ultima_execucao: { modo: 'enquete', resultado: 'OK', detalhe: 'enquete salva' } }));
 }
 
 async function main() {
@@ -329,6 +375,7 @@ async function main() {
   if (MODO === 'login') await modoLogin(planilha, dados, agora);
   else if (MODO === 'grupos') await modoGrupos(planilha, dados);
   else if (MODO === 'enquete') await modoEnquete(planilha, dados);
+  else if (MODO === 'editar-enquete') await modoEditarEnquete(planilha, dados);
   else await modoEnvio(planilha, dados, agora);
 }
 

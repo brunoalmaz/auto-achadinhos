@@ -50,7 +50,7 @@ export class Planilha {
   async carregar() {
     const res = await this.sheets.spreadsheets.values.batchGet({
       spreadsheetId: this.id,
-      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C', 'Enquetes!A1:G'],
+      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C', 'Enquetes!A1:I'],
     });
     const [ofertas, grupos, config, modelos, log, disponiveis = [], enquetes = []] = res.data.valueRanges.map((v) => v.values || []);
     return {
@@ -256,17 +256,19 @@ export function lerModelos(linhas) {
     .map((l) => ({ nome: String(l[0]).trim(), texto: String(l[2]) }));
 }
 
-/** Aba Enquetes: Nº | Data | Pergunta | Opções (separadas por |) | Várias respostas | Status | Enviada em */
+/** Aba Enquetes: Nº | Data | Hora | Pergunta | Opções (|) | Várias respostas | Pronta | Status | Enviada em */
 export function lerEnquetes(linhas) {
   return linhas.slice(1).map((l, i) => ({
     linha: i + 2,
     num: String(l[0] ?? ''),
-    data: String(l[1] ?? ''),
-    pergunta: String(l[2] ?? '').trim(),
-    opcoes: String(l[3] ?? '').split('|').map((o) => o.trim()).filter(Boolean),
-    varias: /^(true|sim|verdadeiro|1)$/i.test(String(l[4] ?? '').trim()),
-    status: String(l[5] ?? '').toUpperCase(),
-    enviadaEm: String(l[6] ?? ''),
+    data: String(l[1] ?? '').trim(),
+    hora: String(l[2] ?? '').trim(),
+    pergunta: String(l[3] ?? '').trim(),
+    opcoes: String(l[4] ?? '').split('|').map((o) => o.trim()).filter(Boolean),
+    varias: verdadeiro(l[5]),
+    pronta: verdadeiro(l[6]),
+    status: String(l[7] ?? '').toUpperCase(),
+    enviadaEm: String(l[8] ?? ''),
   })).filter((e) => e.pergunta && e.opcoes.length >= 2);
 }
 
