@@ -1,7 +1,7 @@
 // Hora do Cupom: nos horários HORA_CUPOM, junta até 5 ofertas aprovadas da aba "Hora do Cupom"
 // num único post (imagem fixa + texto) e manda para os destinos ativos.
 import { readFile } from 'node:fs/promises';
-import { agoraSP, esperar, aleatorioEntre, verdadeiro } from './util.js';
+import { agoraSP, esperar, aleatorioEntre, verdadeiro, lerDataBR } from './util.js';
 import { enviarPost } from './whatsapp.js';
 
 export const ABA_CUPOM = 'Hora do Cupom';
@@ -64,7 +64,7 @@ async function imagemCupom() {
 
 export async function rodarHoraDoCupom(sock, planilha, dados) {
   for (const { h, i } of horariosPendentes(dados.config, dados.log)) {
-    const fila = (dados.cupons || []).filter((c) => c.aprovado && !c.status).reverse().slice(0, dados.config.cupomQtd || 5);
+    const fila = filaCupom(dados);
     const marca = [agoraSP().dataHoraSegTexto, '', `HORA DO CUPOM ${h}`, '', 'CUPOM', fila.length ? `${fila.length} oferta(s)` : 'nada aprovado'];
     if (!fila.length) {
       console.log(`🎟️ Hora do cupom ${h}: nenhuma oferta aprovada.`);
@@ -101,4 +101,10 @@ export async function rodarHoraDoCupom(sock, planilha, dados) {
       for (const c of fila) c.status = 'ENVIADO';
     }
   }
+}
+
+/** Aprovadas e ainda não enviadas, mais recentes primeiro. */
+export function filaCupom(dados) {
+  const t = (c) => lerDataBR(c.capturado)?.getTime() || 0;
+  return (dados.cupons || []).filter((c) => c.aprovado && !c.status).sort((a, b) => t(b) - t(a)).slice(0, dados.config.cupomQtd || 5);
 }
