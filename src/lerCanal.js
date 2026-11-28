@@ -28,7 +28,11 @@ try {
     const quando = n.attrs?.t ? new Date(+n.attrs.t * 1000).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '?';
     console.log(`\n===== #${++i} | ${quando} | ${tipo} =====\n${texto}`);
   }
-  if (!i) console.log('Nenhuma mensagem retornada.');
+  if (!i) {
+    console.log('Nenhuma mensagem retornada. Estrutura:');
+    const resumo = (n, d = 0) => { if (!n || typeof n !== 'object' || d > 5) return; console.log(`${'  '.repeat(d)}<${n.tag}> ${JSON.stringify(n.attrs || {})} ${Buffer.isBuffer(n.content) || n.content instanceof Uint8Array ? `[bytes ${n.content.length}]` : ''}`); if (Array.isArray(n.content)) n.content.slice(0, 4).forEach((c) => resumo(c, d + 1)); };
+    resumo(r);
+  }
 } finally {
   await desconectar(sock);
 }
