@@ -55,3 +55,16 @@ export async function fotoDaLoja(link) {
     return null;
   }
 }
+
+/** true se a borda da foto é (quase) toda branca — produto em fundo limpo. */
+export async function fundoBranco(foto) {
+  const { data, info } = await sharp(foto).flatten({ background: '#ffffff' }).resize(100, 100, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+  let brancos = 0, total = 0;
+  for (let y = 0; y < 100; y++) for (let x = 0; x < 100; x++) {
+    if (x > 3 && x < 96 && y > 3 && y < 96) continue;
+    const i = (y * 100 + x) * info.channels;
+    total++;
+    if (data[i] > 235 && data[i + 1] > 235 && data[i + 2] > 235) brancos++;
+  }
+  return brancos / total > 0.92;
+}
