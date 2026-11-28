@@ -9,6 +9,8 @@ import { criarAuth, Planilha } from './planilha.js';
 import { agoraSP, esperar, aleatorioEntre, lerDataBR } from './util.js';
 import { enviadasUltimaHora, enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
 import { montarMensagem, sortearModelo } from './mensagem.js';
+import { gerarArte, fotoDaLoja, fundoBranco } from './arte.js';
+import { importarAchadinhos } from './importarCupons.js';
 import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, enviarEnquete, SemSessaoError, DeslogadoError } from './whatsapp.js';
 import { publicarStatus } from './status.js';
 import { rodarHoraDoCupom } from './cupom.js';
@@ -182,6 +184,7 @@ async function modoEnvio(planilha, dados, agora) {
           for (let fim = Date.now() + falta * 1000; Date.now() < fim;) {
             await esperar(Math.min(60_000, fim - Date.now()));
             try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
+        try { await achadinhosDoDia(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ achadinhos: ${e.message}`); }
           }
         }
         alvo = Date.now() + config.intervaloMin * 60_000;
@@ -197,6 +200,7 @@ async function modoEnvio(planilha, dados, agora) {
       }
       if (!DRY_RUN) {
         try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
+        try { await achadinhosDoDia(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ achadinhos: ${e.message}`); }
         for (const enq of enquetesVencidas(dados)) {
           try { await mandarEnquete(sock, planilha, dados, enq); } catch (e) { console.log(`   ⚠️ enquete: ${e.message}`); }
           await esperar(aleatorioEntre(30, 60) * 1000);
@@ -209,6 +213,13 @@ async function modoEnvio(planilha, dados, agora) {
         imagem = await planilha.baixarImagem(oferta.imagem);
       } catch (e) {
         avisoImagem = `sem imagem (${e.message}); enviado só texto`;
+      }
+      if (!imagem) {
+        // sem imagem na planilha: cria a arte na hora, com o preço "Por" atual
+        try {
+          const foto = await fotoDaLoja(oferta.link);
+          if (foto && await fundoBranco(foto)) { imagem = await gerarArte({ foto, preco: oferta.precoPor }); avisoImagem = 'arte criada automaticamente'; }
+        } catch (e) { console.log(`   ⚠️ arte: ${e.message}`); }
       }
       const { destinos, desconhecidos } = resolverDestinos(oferta.destino, dados.grupos);
       const momento = () => agoraSP().dataHoraSegTexto;
@@ -291,6 +302,17 @@ async function modoGrupos(planilha, dados) {
 }
 
 // Envia uma enquete para os destinos ativos usando uma conexão já aberta; marca na planilha.
+/** Uma vez por dia: traz os achadinhos novos dos canais de referência (inativos). */
+async function achadinhosDoDia(sock, planilha, dados) {
+  const marca = 'IMPORTAR ACHADINHOS';
+  const hoje = agoraSP().hojeTexto;
+  if (dados.log.some((l) => l.produto === marca && l.dataHora.startsWith(hoje))) return;
+  const n = await importarAchadinhos(sock, planilha, dados, { limite: 40 });
+  const linha = [agoraSP().dataHoraSegTexto, '', marca, '', 'IMPORTADO', `${n} achadinho(s)`];
+  await planilha.anexarLog([linha]);
+  dados.log.push({ dataHora: linha[0], produto: marca, resultado: 'IMPORTADO' });
+}
+
 async function mandarEnquete(sock, planilha, dados, enquete, destinosTeste = null) {
   const destinos = (destinosTeste || dados.grupos.filter((g) => g.ativo && g.jid));
   console.log(`\n📊 Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);

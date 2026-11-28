@@ -86,14 +86,14 @@ async function imagemCupom() {
 }
 
 export async function rodarHoraDoCupom(sock, planilha, dados) {
-  // 30 min antes de cada horário: traz as 5 ofertas com cupom mais recentes pra aprovar.
+  // 10 min antes de cada horário: traz as 5 ofertas com cupom mais recentes pra aprovar.
   const agora = agoraSP();
   const minAgora = agora.hora * 60 + agora.data.getUTCMinutes();
   for (const h of dados.config.horaCupom || []) {
     const [hh, mm] = h.split(':').map(Number);
-    const alvo = hh * 60 + (mm || 0) - 30;
+    const alvo = hh * 60 + (mm || 0) - 10;
     const marcaImp = `IMPORTAR CUPOM ${h}`;
-    if (minAgora < alvo || minAgora - alvo > 25) continue;
+    if (minAgora < alvo || minAgora - alvo > 9) continue;
     if (dados.log.some((l) => l.produto === marcaImp && l.dataHora.startsWith(agora.hojeTexto))) continue;
     const n = await importarCupons(sock, planilha, dados, { limite: dados.config.cupomQtd || 5 });
     const linha = [agoraSP().dataHoraSegTexto, '', marcaImp, '', 'CUPOM', `${n} importada(s)`];
