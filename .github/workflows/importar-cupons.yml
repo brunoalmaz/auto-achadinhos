@@ -1,0 +1,42 @@
+name: Importar cupons
+
+on:
+  workflow_dispatch:
+    inputs:
+      canais:
+        description: 'Link do canal'
+        type: string
+        required: false
+
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --omit=dev --no-audit --no-fund
+      - name: Restaurar sessão do WhatsApp
+        uses: actions/cache/restore@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}
+          restore-keys: wa-auth-
+      - name: Importar
+        run: node src/importarCupons.js
+        env:
+          CANAIS: ${{ inputs.canais }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
+      - name: Salvar sessão do WhatsApp
+        if: always() && hashFiles('auth/creds.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: auth
+          key: wa-auth-${{ github.run_id }}-${{ github.run_attempt }}
