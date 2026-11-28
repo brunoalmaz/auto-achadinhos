@@ -1,6 +1,7 @@
 // Leitura e escrita da planilha (Google Sheets) e download de imagens do Drive.
 
 import { google } from 'googleapis';
+import { lerCupons } from './cupom.js';
 import { letraColuna, lerDataBR, verdadeiro, numeroBR, normalizar } from './util.js';
 
 const ESCOPOS = [
@@ -50,9 +51,9 @@ export class Planilha {
   async carregar() {
     const res = await this.sheets.spreadsheets.values.batchGet({
       spreadsheetId: this.id,
-      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C', 'Enquetes!A1:I'],
+      ranges: ['Ofertas!A1:Z', 'Grupos!A1:E', 'Config!A1:B', 'Modelos!A1:C', 'Log!A1:F', 'Disponiveis!A1:C', 'Enquetes!A1:I', "'Hora do Cupom'!A1:L"],
     });
-    const [ofertas, grupos, config, modelos, log, disponiveis = [], enquetes = []] = res.data.valueRanges.map((v) => v.values || []);
+    const [ofertas, grupos, config, modelos, log, disponiveis = [], enquetes = [], cupons = []] = res.data.valueRanges.map((v) => v.values || []);
     return {
       ...lerOfertas(ofertas),
       grupos: lerGrupos(grupos),
@@ -60,6 +61,7 @@ export class Planilha {
       modelos: lerModelos(modelos),
       log: lerLog(log),
       enquetes: lerEnquetes(enquetes),
+      cupons: lerCupons(cupons),
       disponiveis: disponiveis.slice(1)
         .filter((l) => l[2])
         .map((l) => ({ nome: String(l[0] ?? ''), tipo: String(l[1] ?? 'GRUPO'), id: String(l[2]) })),
@@ -244,6 +246,8 @@ export function lerConfig(linhas) {
     pausaDestinoMinSeg: num('PAUSA_DESTINO_MIN_SEG', 5),
     pausaDestinoMaxSeg: num('PAUSA_DESTINO_MAX_SEG', 15),
     canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
+    horaCupom: String(c.HORA_CUPOM || '').split(/[\s,;]+/).filter((h) => /^\d{1,2}:\d{2}$/.test(h)),
+    cupomQtd: num('CUPOM_QTD', 5),
     // Ex.: "TER=17,QUI=17" → nesses dias nada sai a partir das 17:00.
     fimPorDia: Object.fromEntries(String(c.FIM_POR_DIA || '').toUpperCase().split(/[,;\s]+/)
       .map((x) => x.split('=')).filter(([d, h]) => d && Number.isFinite(+h)).map(([d, h]) => [normalizar(d).toUpperCase(), +h])),

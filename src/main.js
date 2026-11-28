@@ -11,6 +11,7 @@ import { enviadasUltimaHora, enviadasHoje, quantidadeDaRodada, escolherOfertas, 
 import { montarMensagem, sortearModelo } from './mensagem.js';
 import { conectar, desconectar, localizarGrupos, lerCanais, enviarPost, enviarEnquete, SemSessaoError, DeslogadoError } from './whatsapp.js';
 import { publicarStatus } from './status.js';
+import { rodarHoraDoCupom } from './cupom.js';
 
 const MODO = (process.env.MODO || 'envio').toLowerCase();
 const FORCAR = ['1', 'true', 'sim'].includes(String(process.env.FORCAR || '').toLowerCase());
@@ -177,7 +178,11 @@ async function modoEnvio(planilha, dados, agora) {
         const falta = Math.max(0, Math.round((alvo - Date.now()) / 1000));
         if (falta > 0) {
           await avisarProximo(status, `${i + 1}º`, falta);
-          await esperar(falta * 1000);
+          // Espera em blocos de 1 min, conferindo a Hora do Cupom no meio do caminho.
+          for (let fim = Date.now() + falta * 1000; Date.now() < fim;) {
+            await esperar(Math.min(60_000, fim - Date.now()));
+            try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
+          }
         }
         alvo = Date.now() + config.intervaloMin * 60_000;
       } else if (i > 0) {
@@ -191,6 +196,7 @@ async function modoEnvio(planilha, dados, agora) {
         break;
       }
       if (!DRY_RUN) {
+        try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
         for (const enq of enquetesVencidas(dados)) {
           try { await mandarEnquete(sock, planilha, dados, enq); } catch (e) { console.log(`   ⚠️ enquete: ${e.message}`); }
           await esperar(aleatorioEntre(30, 60) * 1000);
