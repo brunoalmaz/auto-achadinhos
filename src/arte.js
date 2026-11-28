@@ -1,0 +1,33 @@
+// Monta a arte do achadinho: moldura do Assopra + foto do produto + preço no selo roxo.
+import sharp from 'sharp';
+import { readFile } from 'node:fs/promises';
+
+const AREA = { x: 180, y: 320, w: 640, h: 610 }; // espaço da foto
+const SELO = { cx: 660, cy: 1056 };              // centro do selo de preço
+
+let moldura = null;
+
+export async function gerarArte({ foto, preco }) {
+  if (!moldura) moldura = await readFile(new URL('../assets/moldura-achadinho.png', import.meta.url));
+  const camadas = [];
+  if (foto) {
+    const img = await sharp(foto).resize(AREA.w, AREA.h, { fit: 'inside', background: '#ffffff' }).png().toBuffer();
+    const { width, height } = await sharp(img).metadata();
+    camadas.push({ input: img, left: AREA.x + Math.round((AREA.w - width) / 2), top: AREA.y + Math.round((AREA.h - height) / 2) });
+  }
+  const valor = String(preco || '').replace(/^R\$\s*/i, '').trim();
+  if (valor) {
+    const tam = valor.length > 8 ? 46 : 54;
+    const svg = `<svg width="1000" height="1162" xmlns="http://www.w3.org/2000/svg"><text x="${SELO.cx}" y="${SELO.cy}" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="${tam}" fill="#ffffff">R$${valor}</text></svg>`;
+    camadas.push({ input: Buffer.from(svg), left: 0, top: 0 });
+  }
+  return sharp(moldura).composite(camadas).jpeg({ quality: 88 }).toBuffer();
+}
+
+/** Baixa a imagem de um post de canal (mídia de canal não é criptografada). */
+export async function baixarFotoCanal(imageMessage) {
+  const caminho = imageMessage?.directPath;
+  if (!caminho) return null;
+  const r = await fetch(`https://mmg.whatsapp.net${caminho}`);
+  return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+}

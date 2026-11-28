@@ -3,8 +3,30 @@
 import { readFile } from 'node:fs/promises';
 import { agoraSP, esperar, aleatorioEntre, verdadeiro, lerDataBR } from './util.js';
 import { enviarPost } from './whatsapp.js';
+import { importarCupons } from './importarCupons.js';
 
 export const ABA_CUPOM = 'Hora do Cupom';
+
+export const TEMAS = /\b(ps[45]|playstation|xbox|nintendo|switch|dualsense|dualshock|joy-?con|controle|console|jogo|game|gamer|steam|pc gamer|monitor|teclado|mouse|headset|fone|placa de v[ií]deo|rtx|gtx|radeon|ryzen|intel|processador|ssd|hd externo|mem[oó]ria ram|notebook|tablet|ipad|iphone|celular|smartphone|galaxy|xiaomi|redmi|motorola|smartwatch|apple watch|airpods|caixa de som|soundbar|smart tv|\btv\b|projetor|roteador|webcam|microfone|cadeira gamer|mesa digitalizadora|kindle|echo|alexa|chromecast|fire tv|carregador|power ?bank|pendrive|cart[aã]o de mem[oó]ria|impressora|c[aâ]mera|gopro|drone|vr|meta quest|retr[oô]|mega drive|super nintendo|amiibo|funko|colecion[aá]vel|lego)\b/i;
+
+export const LOJAS = [['amazon', 'Amazon'], ['amzn', 'Amazon'], ['meli', 'Mercado Livre'], ['mercadolivre', 'Mercado Livre'], ['shopee', 'Shopee'], ['magalu', 'Magalu'], ['magazineluiza', 'Magalu'], ['kabum', 'KaBuM'], ['aliexpress', 'AliExpress'], ['casasbahia', 'Casas Bahia'], ['pontofrio', 'Ponto'], ['americanas', 'Americanas'], ['terabyte', 'Terabyte'], ['pichau', 'Pichau']];
+
+export function interpretar(texto) {
+  const link = texto.match(/https?:\/\/\S+/)?.[0] || '';
+  if (!link) return null;
+  const linhas = texto.split('\n').map((l) => l.trim()).filter(Boolean);
+  const limpa = (l) => l.replace(/[*_~]/g, '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  const valor = (re) => texto.replace(/[*_~]/g, '').match(re)?.[1]?.trim() || '';
+  const por = valor(/(?:por|agora|apenas|sai por|pre[çc]o)[:\s]*R\$\s*([\d.]+(?:,\d{2})?)/i) || valor(/R\$\s*([\d.]+(?:,\d{2})?)/);
+  const de = valor(/de[:\s]*R\$\s*([\d.]+(?:,\d{2})?)/i);
+  const cupom = valor(/cupo[mn]s?[^\n:]*?[:\-–]\s*([A-Z0-9]{4,})/i) || valor(/🎟️?\s*([A-Z0-9]{4,})/u);
+  const produto = linhas.map(limpa).find((l) => l.length > 8 && !/^(oferta|promo|cupo|resgate|link|compre|por:|de:|r\$|frete|aproveite|corre|vendido|🛒)/i.test(l) && !/https?:\/\//.test(l) && !/^R\$/.test(l)) || '';
+  const host = link.toLowerCase();
+  const loja = (LOJAS.find(([k]) => host.includes(k)) || [])[1] || valor(/oferta n[ao] ([\p{L} ]+)/iu).replace(/\b\w/g, (c) => c.toUpperCase());
+  if (!produto) return null;
+  return { produto, loja, de: de ? `R$ ${de}` : '', por: por ? `R$ ${por}` : '', cupom, link };
+}
+
 
 /** Capturado em | Canal | Produto | Loja | De | Por | Cupom | Link original | Seu link | Aprovado | Status | Enviado em */
 export function lerCupons(linhas) {
@@ -63,6 +85,21 @@ async function imagemCupom() {
 }
 
 export async function rodarHoraDoCupom(sock, planilha, dados) {
+  // 30 min antes de cada horário: traz as 5 ofertas com cupom mais recentes pra aprovar.
+  const agora = agoraSP();
+  const minAgora = agora.hora * 60 + agora.data.getUTCMinutes();
+  for (const h of dados.config.horaCupom || []) {
+    const [hh, mm] = h.split(':').map(Number);
+    const alvo = hh * 60 + (mm || 0) - 30;
+    const marcaImp = `IMPORTAR CUPOM ${h}`;
+    if (minAgora < alvo || minAgora - alvo > 25) continue;
+    if (dados.log.some((l) => l.produto === marcaImp && l.dataHora.startsWith(agora.hojeTexto))) continue;
+    const n = await importarCupons(sock, planilha, dados, { limite: dados.config.cupomQtd || 5 });
+    const linha = [agoraSP().dataHoraSegTexto, '', marcaImp, '', 'CUPOM', `${n} importada(s)`];
+    await planilha.anexarLog([linha]);
+    dados.log.push({ dataHora: linha[0], produto: marcaImp, resultado: 'CUPOM', linha: 0 });
+    Object.assign(dados, { cupons: (await planilha.carregar()).cupons });
+  }
   for (const { h, i } of horariosPendentes(dados.config, dados.log)) {
     const fila = filaCupom(dados);
     const marca = [agoraSP().dataHoraSegTexto, '', `HORA DO CUPOM ${h}`, '', 'CUPOM', fila.length ? `${fila.length} oferta(s)` : 'nada aprovado'];
