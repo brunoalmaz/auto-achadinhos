@@ -356,8 +356,9 @@ function enquetesVencidas(dados) {
   return (dados.enquetes || []).filter((e) => {
     if (!e.pronta || e.status === 'ENVIADA' || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(e.data)) return false;
     const quando = lerDataBR(`${e.data} ${e.hora || '12:00'}`.trim());
-    return quando && quando.getTime() <= agora;
-  });
+    // só a do horário (até 3h de atraso); enquete velha não sai atrasada
+    return quando && quando.getTime() <= agora && agora - quando.getTime() < 3 * 3600 * 1000;
+  }).slice(0, 1);
 }
 
 // Botão "Enviar" do painel: linha da aba Enquetes, ou pergunta avulsa em JSON.

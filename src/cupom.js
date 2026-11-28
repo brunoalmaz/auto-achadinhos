@@ -93,7 +93,7 @@ export async function rodarHoraDoCupom(sock, planilha, dados) {
     const [hh, mm] = h.split(':').map(Number);
     const alvo = hh * 60 + (mm || 0) - 10;
     const marcaImp = `IMPORTAR CUPOM ${h}`;
-    if (minAgora < alvo || minAgora - alvo > 9) continue;
+    if (minAgora < alvo || minAgora - alvo > 60) continue;
     if (dados.log.some((l) => l.produto === marcaImp && l.dataHora.startsWith(agora.hojeTexto))) continue;
     const n = await importarCupons(sock, planilha, dados, { limite: dados.config.cupomQtd || 5 });
     const linha = [agoraSP().dataHoraSegTexto, '', marcaImp, '', 'CUPOM', `${n} importada(s)`];
@@ -105,6 +105,9 @@ export async function rodarHoraDoCupom(sock, planilha, dados) {
     const fila = filaCupom(dados);
     const marca = [agoraSP().dataHoraSegTexto, '', `HORA DO CUPOM ${h}`, '', 'CUPOM', fila.length ? `${fila.length} oferta(s)` : 'nada aprovado'];
     if (!fila.length) {
+      const [hh2, mm2] = h.split(':').map(Number);
+      const atraso = agoraSP().hora * 60 + agoraSP().data.getUTCMinutes() - (hh2 * 60 + (mm2 || 0));
+      if (atraso < 80) { console.log(`🎟️ Hora do cupom ${h}: aguardando aprovação.`); continue; }
       console.log(`🎟️ Hora do cupom ${h}: nenhuma oferta aprovada.`);
       await planilha.anexarLog([marca]);
       dados.log.push({ dataHora: marca[0], produto: marca[2], resultado: 'CUPOM', linha: 0 });
@@ -144,5 +147,6 @@ export async function rodarHoraDoCupom(sock, planilha, dados) {
 /** Aprovadas e ainda não enviadas, mais recentes primeiro. */
 export function filaCupom(dados) {
   const t = (c) => lerDataBR(c.capturado)?.getTime() || 0;
-  return (dados.cupons || []).filter((c) => c.aprovado && !c.status).sort((a, b) => t(b) - t(a)).slice(0, dados.config.cupomQtd || 5);
+  const limite = Date.now() - 24 * 3600 * 1000;
+  return (dados.cupons || []).filter((c) => c.aprovado && !c.status && t(c) >= limite).sort((a, b) => t(b) - t(a)).slice(0, dados.config.cupomQtd || 5);
 }
