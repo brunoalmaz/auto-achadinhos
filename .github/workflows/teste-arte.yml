@@ -7,6 +7,11 @@ on:
         description: 'Link do canal'
         type: string
         required: false
+      fonte:
+        description: 'cupons ou ofertas'
+        type: string
+        required: false
+        default: 'ofertas'
 
 concurrency:
   group: whatsapp
@@ -32,6 +37,7 @@ jobs:
         run: node src/arteTeste.js
         env:
           DESTINO: ${{ inputs.destino }}
+          FONTE: ${{ inputs.fonte }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
       - name: Salvar sessão do WhatsApp
