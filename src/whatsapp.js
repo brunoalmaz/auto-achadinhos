@@ -197,6 +197,19 @@ async function enviarImagemCanal(sock, jid, imagem, legenda) {
 
 /** Enquete nativa do WhatsApp. varias=true deixa marcar mais de uma opção. */
 export async function enviarEnquete(sock, jid, { pergunta, opcoes, varias }) {
-  if (jid.endsWith('@newsletter')) throw new Error('canal não aceita enquete');
+  if (jid.endsWith('@newsletter')) {
+    // canal: a biblioteca descarta o <meta polltype>; monta a mensagem na mão
+    const msg = { pollCreationMessageV3: { name: pergunta, options: opcoes.slice(0, 12).map((o) => ({ optionName: o })), selectableOptionsCount: 1 } };
+    const { proto: P } = await import('baileys');
+    await sock.sendNode({
+      tag: 'message',
+      attrs: { to: jid, id: '3EB0' + createHash('md5').update(String(Math.random())).digest('hex').slice(0, 16).toUpperCase(), type: 'poll' },
+      content: [
+        { tag: 'plaintext', attrs: {}, content: P.Message.encode(msg).finish() },
+        { tag: 'meta', attrs: { polltype: 'creation' } },
+      ],
+    });
+    return;
+  }
   return sock.sendMessage(jid, { poll: { name: pergunta, values: opcoes.slice(0, 12), selectableCount: varias ? 0 : 1 } });
 }
