@@ -31,3 +31,23 @@ export async function baixarFotoCanal(imageMessage) {
   const r = await fetch(`https://mmg.whatsapp.net${caminho}`);
   return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
 }
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+
+/** Foto limpa do produto, tirada da página da loja (og:image / imagem principal). */
+export async function fotoDaLoja(link) {
+  if (!link) return null;
+  try {
+    const r = await fetch(link, { redirect: 'follow', headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9' } });
+    const html = await r.text();
+    const achar = (re) => html.match(re)?.[1]?.replace(/&amp;/g, '&');
+    let url = achar(/"hiRes":"(https:[^"]+)"/) || achar(/id="landingImage"[^>]*data-old-hires="(https:[^"]+)"/)
+      || achar(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) || achar(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
+    if (!url) return null;
+    url = url.replace(/-[A-Z]\.(jpg|webp)$/i, '-O.$1'); // Mercado Livre: versão grande
+    const img = await fetch(url, { headers: { 'User-Agent': UA } });
+    return img.ok ? Buffer.from(await img.arrayBuffer()) : null;
+  } catch {
+    return null;
+  }
+}
