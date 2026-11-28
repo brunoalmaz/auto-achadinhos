@@ -2,7 +2,7 @@
 import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
 
-const AREA = { x: 180, y: 320, w: 640, h: 610 }; // espaço da foto
+const AREA = { x: 60, y: 322, w: 880, h: 612 }; // espaço branco todo, pode encostar no Gus e no preço // espaço da foto
 const SELO = { cx: 660, cy: 1056 };              // centro do selo de preço
 
 let moldura = null;
@@ -11,14 +11,18 @@ export async function gerarArte({ foto, preco }) {
   if (!moldura) moldura = await readFile(new URL('../assets/moldura-achadinho.png', import.meta.url));
   const camadas = [];
   if (foto) {
-    const img = await sharp(foto).resize(AREA.w, AREA.h, { fit: 'inside', background: '#ffffff' }).png().toBuffer();
+    // corta a borda branca da foto e amplia o produto para ocupar o espaço (sem distorcer)
+    let base = await sharp(foto).flatten({ background: '#ffffff' }).png().toBuffer();
+    try { base = await sharp(base).trim({ background: '#ffffff', threshold: 25 }).toBuffer(); } catch { /* foto sem borda */ }
+    const img = await sharp(base).resize(AREA.w, AREA.h, { fit: 'inside' }).png().toBuffer();
     const { width, height } = await sharp(img).metadata();
     camadas.push({ input: img, left: AREA.x + Math.round((AREA.w - width) / 2), top: AREA.y + Math.round((AREA.h - height) / 2) });
   }
   const valor = String(preco || '').replace(/^R\$\s*/i, '').trim();
   if (valor) {
-    const tam = valor.length > 8 ? 46 : 54;
-    const svg = `<svg width="1000" height="1162" xmlns="http://www.w3.org/2000/svg"><text x="${SELO.cx}" y="${SELO.cy}" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="${tam}" fill="#ffffff">R$${valor}</text></svg>`;
+    const texto = `R$ ${valor}`;
+    const tam = Math.min(58, Math.floor(330 / (texto.length * 0.62))); // cabe na caixa roxa sem esticar
+    const svg = `<svg width="1000" height="1162" xmlns="http://www.w3.org/2000/svg"><text x="${SELO.cx}" y="${SELO.cy}" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="${tam}" fill="#ffffff">${texto}</text></svg>`;
     camadas.push({ input: Buffer.from(svg), left: 0, top: 0 });
   }
   return sharp(moldura).composite(camadas).jpeg({ quality: 88 }).toBuffer();
