@@ -58,7 +58,7 @@ const preco = (v) => {
 };
 
 export function montarCupom(itens, indiceHorario) {
-  const m = MODELOS[indiceHorario % MODELOS.length];
+  const m = MODELOS[Math.floor(Math.random() * MODELOS.length)]; // texto aleatório a cada disparo
   const blocos = itens.map((c) => [
     `🎮 *${c.produto}*`,
     c.por ? `💰 ${c.de ? `~${preco(c.de)}~ ` : ''}*${preco(c.por)}*` : '',

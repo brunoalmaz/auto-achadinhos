@@ -292,7 +292,7 @@ async function modoGrupos(planilha, dados) {
 
 // Envia uma enquete para os destinos ativos usando uma conexão já aberta; marca na planilha.
 async function mandarEnquete(sock, planilha, dados, enquete, destinosTeste = null) {
-  const destinos = destinosTeste || dados.grupos.filter((g) => g.ativo && g.jid);
+  const destinos = (destinosTeste || dados.grupos.filter((g) => g.ativo && g.jid)).filter((g) => !g.jid.endsWith('@newsletter')); // enquete só em grupos
   console.log(`\n📊 Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);
   const log = [];
   let ok = 0;

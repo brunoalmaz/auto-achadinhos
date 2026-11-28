@@ -197,10 +197,6 @@ async function enviarImagemCanal(sock, jid, imagem, legenda) {
 
 /** Enquete nativa do WhatsApp. varias=true deixa marcar mais de uma opção. */
 export async function enviarEnquete(sock, jid, { pergunta, opcoes, varias }) {
-  if (jid.endsWith('@newsletter')) {
-    // canal: só aceita enquete V3 de escolha única
-    const msg = { pollCreationMessageV3: { name: pergunta, options: opcoes.slice(0, 12).map((o) => ({ optionName: o })), selectableOptionsCount: 1 } };
-    return sock.relayMessage(jid, msg, {});
-  }
+  if (jid.endsWith('@newsletter')) throw new Error('canal não aceita enquete');
   return sock.sendMessage(jid, { poll: { name: pergunta, values: opcoes.slice(0, 12), selectableCount: varias ? 0 : 1 } });
 }
