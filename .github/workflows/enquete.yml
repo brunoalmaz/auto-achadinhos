@@ -7,6 +7,10 @@ on:
         description: 'Linha da aba Enquetes ou JSON {pergunta,opcoes,varias}'
         type: string
         required: true
+      destino:
+        description: 'Link de canal para teste (vazio = destinos ativos)'
+        type: string
+        required: false
 
 concurrency:
   group: whatsapp
@@ -33,6 +37,7 @@ jobs:
         env:
           MODO: enquete
           ENQUETE: ${{ inputs.enquete }}
+          DESTINO: ${{ inputs.destino }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           PLANILHA_ID: ${{ secrets.PLANILHA_ID }}
           PANEL_TOKEN: ${{ secrets.PANEL_TOKEN }}
