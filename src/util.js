@@ -87,3 +87,21 @@ export function letraColuna(i) {
   }
   return s;
 }
+
+/** "R$ 1.234,56" -> 1234.56 */
+export function valorBR(v) {
+  const t = String(v ?? '').replace(/[^\d,.]/g, '');
+  if (!t) return 0;
+  return Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t) || 0;
+}
+/** 1234.56 -> "R$ 1.234,56" */
+export function formatarBR(n) {
+  return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+/** Se "De" estiver vazio ou <= "Por", sobe o "De" em 15% (mantém o desconto aparecendo). */
+export function ajustarDe(de, por) {
+  const p = valorBR(por), d = valorBR(de);
+  if (!p || d > p) return null;
+  const novo = Math.round(p * 1.15 * 100) / 100;
+  return { de: formatarBR(novo), desconto: `${Math.round((1 - p / novo) * 100)}%` };
+}

@@ -201,6 +201,8 @@ export function lerOfertas(linhas) {
     ofertas,
     colunas: {
       status: col('status'),
+      precoDe: col('precoDe'),
+      desconto: col('desconto'),
       ultimoEnvio: col('ultimoEnvio'),
       qtdEnvios: col('qtdEnvios'),
     },

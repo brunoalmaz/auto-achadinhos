@@ -6,7 +6,7 @@
 import qrcodeTerminal from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import { criarAuth, Planilha } from './planilha.js';
-import { agoraSP, esperar, aleatorioEntre, lerDataBR } from './util.js';
+import { agoraSP, esperar, aleatorioEntre, lerDataBR, ajustarDe } from './util.js';
 import { enviadasUltimaHora, enviadasHoje, quantidadeDaRodada, escolherOfertas, resolverDestinos, filaNovas, repostaveis } from './selecao.js';
 import { montarMensagem, sortearModelo } from './mensagem.js';
 import { gerarArte, fotoDaLoja, fundoBranco } from './arte.js';
@@ -184,6 +184,7 @@ async function modoEnvio(planilha, dados, agora) {
           for (let fim = Date.now() + falta * 1000; Date.now() < fim;) {
             await esperar(Math.min(60_000, fim - Date.now()));
             try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
+        try { await conferirPrecosDoDia(planilha, dados); } catch (e) { console.log(`   ⚠️ preços: ${e.message}`); }
         try { await achadinhosDoDia(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ achadinhos: ${e.message}`); }
           }
         }
@@ -200,11 +201,21 @@ async function modoEnvio(planilha, dados, agora) {
       }
       if (!DRY_RUN) {
         try { await rodarHoraDoCupom(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ cupom: ${e.message}`); }
+        try { await conferirPrecosDoDia(planilha, dados); } catch (e) { console.log(`   ⚠️ preços: ${e.message}`); }
         try { await achadinhosDoDia(sock, planilha, dados); } catch (e) { console.log(`   ⚠️ achadinhos: ${e.message}`); }
         for (const enq of enquetesVencidas(dados)) {
           try { await mandarEnquete(sock, planilha, dados, enq); } catch (e) { console.log(`   ⚠️ enquete: ${e.message}`); }
           await esperar(aleatorioEntre(30, 60) * 1000);
         }
+      }
+      const ajuste = ajustarDe(oferta.precoDe, oferta.precoPor);
+      if (ajuste) {
+        // "De" vazio ou igual ao "Por": +15% pra oferta sair com desconto
+        oferta.precoDe = ajuste.de; oferta.desconto = ajuste.desconto;
+        const fix = [];
+        if (colunas.precoDe) fix.push({ range: `Ofertas!${colunas.precoDe}${oferta.linha}`, valor: ajuste.de });
+        if (colunas.desconto) fix.push({ range: `Ofertas!${colunas.desconto}${oferta.linha}`, valor: ajuste.desconto });
+        if (!DRY_RUN && fix.length) await planilha.escreverCelulas(fix);
       }
       const texto = montarMensagem(sortearModelo(dados.modelos), oferta);
       let imagem = null;
@@ -308,6 +319,27 @@ async function modoGrupos(planilha, dados) {
 }
 
 // Envia uma enquete para os destinos ativos usando uma conexão já aberta; marca na planilha.
+/** Uma vez por dia (1ª rodada): confere "De" x "Por" de todas as ofertas e ajusta +15% onde precisar. */
+async function conferirPrecosDoDia(planilha, dados) {
+  const marca = 'CONFERIR PRECOS';
+  const hoje = agoraSP().hojeTexto;
+  if (dados.log.some((l) => l.produto === marca && l.dataHora.startsWith(hoje))) return;
+  const { colunas } = dados;
+  const fix = [];
+  for (const o of dados.ofertas) {
+    const aj = ajustarDe(o.precoDe, o.precoPor);
+    if (!aj) continue;
+    o.precoDe = aj.de; o.desconto = aj.desconto;
+    if (colunas.precoDe) fix.push({ range: `Ofertas!${colunas.precoDe}${o.linha}`, valor: aj.de });
+    if (colunas.desconto) fix.push({ range: `Ofertas!${colunas.desconto}${o.linha}`, valor: aj.desconto });
+  }
+  if (fix.length) await planilha.escreverCelulas(fix);
+  const linha = [agoraSP().dataHoraSegTexto, '', marca, '', 'AJUSTE', `${fix.length / 2} oferta(s) ajustada(s)`];
+  await planilha.anexarLog([linha]);
+  dados.log.push({ dataHora: linha[0], produto: marca, resultado: 'AJUSTE' });
+  console.log(`💲 Conferência de preços: ${fix.length / 2} ajustada(s).`);
+}
+
 /** Uma vez por dia: traz os achadinhos novos dos canais de referência (inativos). */
 async function achadinhosDoDia(sock, planilha, dados) {
   const marca = 'IMPORTAR ACHADINHOS';

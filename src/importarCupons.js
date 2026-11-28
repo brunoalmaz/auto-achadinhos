@@ -3,7 +3,7 @@
 import { proto } from 'baileys';
 import { conectar, desconectar } from './whatsapp.js';
 import { criarAuth, Planilha } from './planilha.js';
-import { agoraSP } from './util.js';
+import { agoraSP, ajustarDe } from './util.js';
 import { interpretar, TEMAS } from './cupom.js';
 import { fotoDaLoja, fundoBranco } from './arte.js';
 
@@ -67,7 +67,8 @@ export async function importarAchadinhos(sock, planilha, dados, { limite = 40, p
       ja.add(chave); ja.add(chaveP);
       const num = (v) => Number(String(v || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0;
       const desc = num(o.de) > num(o.por) ? `${Math.round((1 - num(o.por) / num(o.de)) * 100)}%` : '';
-      achadas.push({ t: Number(x.attrs?.t || 0), linha: [agoraSP().hojeTexto, o.link, o.produto, o.loja || '', o.de || '', o.por, desc, o.cupom || '', '', '', '', '', '', false, '', '', ''] });
+      const aj = ajustarDe(o.de, o.por);
+      achadas.push({ t: Number(x.attrs?.t || 0), linha: [agoraSP().hojeTexto, o.link, o.produto, o.loja || '', aj ? aj.de : (o.de || ''), o.por, aj ? aj.desconto : desc, o.cupom || '', '', '', '', '', '', false, '', '', ''] });
     }
   }
   const novas = achadas.sort((a, b) => b.t - a.t).slice(0, limite).map((a) => a.linha);
