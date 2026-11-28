@@ -248,6 +248,7 @@ export function lerConfig(linhas) {
     canais: String(c.CANAIS || '').split(/[\s,;]+/).filter(Boolean),
     horaCupom: String(c.HORA_CUPOM || '').split(/[\s,;]+/).filter((h) => /^\d{1,2}:\d{2}$/.test(h)),
     cupomQtd: num('CUPOM_QTD', 5),
+    canaisCupom: String(c.CANAIS_CUPOM || '').split(/[\s,;]+/).filter(Boolean),
     // Ex.: "TER=17,QUI=17" → nesses dias nada sai a partir das 17:00.
     fimPorDia: Object.fromEntries(String(c.FIM_POR_DIA || '').toUpperCase().split(/[,;\s]+/)
       .map((x) => x.split('=')).filter(([d, h]) => d && Number.isFinite(+h)).map(([d, h]) => [normalizar(d).toUpperCase(), +h])),
