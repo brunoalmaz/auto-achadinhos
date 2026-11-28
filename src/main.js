@@ -221,6 +221,12 @@ async function modoEnvio(planilha, dados, agora) {
           if (foto && await fundoBranco(foto)) { imagem = await gerarArte({ foto, preco: oferta.precoPor }); avisoImagem = 'arte criada automaticamente'; }
         } catch (e) { console.log(`   ⚠️ arte: ${e.message}`); }
       }
+      if (!imagem && !DRY_RUN) {
+        // sem foto boa: não lança; sinaliza na planilha pra alguém colocar a imagem
+        console.log(`   ⚠️ Linha ${oferta.linha}: sem foto de fundo branco — marcada ATENÇÃO`);
+        if (colunas.status) await planilha.escreverCelulas([{ range: `Ofertas!${colunas.status}${oferta.linha}`, valor: 'ATENÇÃO: SEM FOTO' }]);
+        continue;
+      }
       const { destinos, desconhecidos } = resolverDestinos(oferta.destino, dados.grupos);
       const momento = () => agoraSP().dataHoraSegTexto;
       for (const nome of desconhecidos) log.push([momento(), oferta.linha, oferta.produto, nome, 'ERRO', 'destino não existe na aba Grupos']);

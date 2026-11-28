@@ -5,6 +5,7 @@ import { conectar, desconectar } from './whatsapp.js';
 import { criarAuth, Planilha } from './planilha.js';
 import { agoraSP } from './util.js';
 import { interpretar, TEMAS } from './cupom.js';
+import { fotoDaLoja, fundoBranco } from './arte.js';
 
 function* nos(n) { if (!n || typeof n !== 'object') return; yield n; if (Array.isArray(n.content)) for (const c of n.content) yield* nos(c); }
 
@@ -70,6 +71,12 @@ export async function importarAchadinhos(sock, planilha, dados, { limite = 40, p
     }
   }
   const novas = achadas.sort((a, b) => b.t - a.t).slice(0, limite).map((a) => a.linha);
+  for (const l of novas) {
+    // confere se a loja tem foto de fundo branco; se não, já sinaliza
+    let ok = false;
+    try { const f = await fotoDaLoja(l[1]); ok = !!f && await fundoBranco(f); } catch { /* sem foto */ }
+    if (!ok) l[14] = 'ATENÇÃO: SEM FOTO';
+  }
   if (novas.length) {
     await planilha.sheets.spreadsheets.values.append({
       spreadsheetId: planilha.id, range: 'Ofertas!A:Q', valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
