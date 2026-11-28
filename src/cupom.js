@@ -60,11 +60,12 @@ const preco = (v) => {
 export function montarCupom(itens, indiceHorario) {
   const m = MODELOS[indiceHorario % MODELOS.length];
   const blocos = itens.map((c) => [
-    `🎮 ${c.produto}${c.por ? ` – ${preco(c.por)}` : ''}`,
-    c.cupom ? `🎟️ ${c.cupom}` : '',
+    `🎮 *${c.produto}*`,
+    c.por ? `💰 ${c.de ? `~${preco(c.de)}~ ` : ''}*${preco(c.por)}*` : '',
+    c.cupom ? `🎟️ Cupom: *${c.cupom}*` : '',
     `🛒 ${c.seuLink || c.linkOriginal}`,
   ].filter(Boolean).join('\n'));
-  return [m.abre, '', blocos.join('\n\n'), '', m.fecha].join('\n');
+  return [`*${m.abre}*`, '', blocos.join('\n\n'), '', `_${m.fecha}_`].join('\n');
 }
 
 /** Horários do dia que já chegaram (até 90 min atrás) e ainda não rodaram hoje. */

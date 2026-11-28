@@ -11,9 +11,17 @@ export async function gerarArte({ foto, preco }) {
   if (!moldura) moldura = await readFile(new URL('../assets/moldura-achadinho.png', import.meta.url));
   const camadas = [];
   if (foto) {
-    const img = await sharp(foto).resize(AREA.w, AREA.h, { fit: 'inside', background: '#ffffff' }).png().toBuffer();
+    // leve assimetria: escala, giro e deslocamento aleatórios
+    const esc = 0.86 + Math.random() * 0.1;
+    const giro = (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 4);
+    let img = await sharp(foto).resize(Math.round(AREA.w * esc), Math.round(AREA.h * esc), { fit: 'inside' })
+      .flatten({ background: '#ffffff' }).rotate(giro, { background: '#ffffff' }).png().toBuffer();
+    img = await sharp(img).resize(AREA.w, AREA.h, { fit: 'inside', withoutEnlargement: true }).toBuffer();
     const { width, height } = await sharp(img).metadata();
-    camadas.push({ input: img, left: AREA.x + Math.round((AREA.w - width) / 2), top: AREA.y + Math.round((AREA.h - height) / 2) });
+    const folgaX = AREA.w - width, folgaY = AREA.h - height;
+    const left = AREA.x + Math.round(folgaX * (Math.random() < 0.5 ? 0.15 + Math.random() * 0.2 : 0.65 + Math.random() * 0.2));
+    const top = AREA.y + Math.round(folgaY * (0.3 + Math.random() * 0.4));
+    camadas.push({ input: img, left, top });
   }
   const valor = String(preco || '').replace(/^R\$\s*/i, '').trim();
   if (valor) {

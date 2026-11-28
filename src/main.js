@@ -291,14 +291,16 @@ async function modoGrupos(planilha, dados) {
 }
 
 // Envia uma enquete para os destinos ativos usando uma conexão já aberta; marca na planilha.
-async function mandarEnquete(sock, planilha, dados, enquete) {
-  const destinos = dados.grupos.filter((g) => g.ativo && g.jid);
+async function mandarEnquete(sock, planilha, dados, enquete, destinosTeste = null) {
+  const destinos = destinosTeste || dados.grupos.filter((g) => g.ativo && g.jid);
   console.log(`\n📊 Enquete: ${enquete.pergunta} -> ${destinos.length} destino(s)`);
   const log = [];
   let ok = 0;
   for (const [i, g] of destinos.entries()) {
     if (i > 0) await esperar(aleatorioEntre(dados.config.pausaDestinoMinSeg, dados.config.pausaDestinoMaxSeg) * 1000);
     try {
+      await enviarPost(sock, g.jid, { texto: '📊 *ENQUETE ASSOPRA FITAS* 📼\n\n_Vota aí, rapaziada!_ 👇' });
+      await esperar(3000);
       await enviarEnquete(sock, g.jid, enquete);
       ok++;
       log.push([agoraSP().dataHoraSegTexto, '', `Enquete: ${enquete.pergunta}`, g.nome, 'ENQUETE', '']);
@@ -308,6 +310,7 @@ async function mandarEnquete(sock, planilha, dados, enquete) {
       console.log(`   ❌ ${g.nome}: ${e.message}`);
     }
   }
+  if (enquete.teste) return ok;
   await planilha.anexarLog(log);
   if (enquete.linha && ok) {
     enquete.status = 'ENVIADA';
@@ -343,7 +346,15 @@ async function modoEnquete(planilha, dados) {
   const { sock } = await conectar();
   let ok = 0;
   try {
-    ok = await mandarEnquete(sock, planilha, dados, enquete);
+    const link = String(process.env.DESTINO || '').trim();
+    let teste = null;
+    if (link) {
+      const cod = link.split('/').pop();
+      const meta = await sock.newsletterMetadata('invite', cod);
+      teste = [{ nome: 'TESTE', jid: meta.id, ativo: true }];
+      enquete = { ...enquete, teste: true };
+    }
+    ok = await mandarEnquete(sock, planilha, dados, enquete, teste);
   } finally {
     await desconectar(sock);
     Object.assign(dados, await planilha.carregar());
