@@ -29,21 +29,26 @@ try {
     jids.set(m.id, nome);
     console.log(`\nCanal: ${nome} | ${m.id} | papel: ${m?.viewer_metadata?.role || '?'} | mute: ${m?.viewer_metadata?.mute || '?'}`);
     try { await sock.subscribeNewsletterUpdates(m.id); console.log('  inscrito em atualizações ao vivo'); } catch (e) { console.log('  subscribe falhou:', e.message); }
-    for (const args of [[m.id, 10], [m.id, 10, Math.floor(Date.now() / 1000) - 86400]]) {
+    const tentativas = [
+      ['message_updates', { tag: 'iq', attrs: { id: sock.generateMessageTag(), type: 'get', xmlns: 'newsletter', to: m.id }, content: [{ tag: 'message_updates', attrs: { count: '10' } }] }],
+      ['messages/invite', { tag: 'iq', attrs: { id: sock.generateMessageTag(), type: 'get', xmlns: 'newsletter', to: 's.whatsapp.net' }, content: [{ tag: 'messages', attrs: { type: 'invite', key: c, count: '10' } }] }],
+      ['messages/jid', { tag: 'iq', attrs: { id: sock.generateMessageTag(), type: 'get', xmlns: 'newsletter', to: 's.whatsapp.net' }, content: [{ tag: 'messages', attrs: { type: 'jid', jid: m.id, count: '10' } }] }],
+    ];
+    for (const [nomeT, no] of tentativas) {
       try {
-        const r = await sock.newsletterFetchMessages(...args);
+        const r = await sock.query(no);
         let n = 0;
         for (const x of nos(r)) {
           if (x.tag !== 'message') continue;
           const pt = x.content?.find?.((y) => y.tag === 'plaintext');
           if (pt?.content) { n++; if (n <= 3) console.log('  [HISTÓRICO]', resumoMsg(proto.Message.decode(pt.content))); }
         }
-        console.log(`  fetch(${args.length} args): tipo=${typeof r} tag=${r?.tag} filhos=${Array.isArray(r?.content) ? r.content.map((y) => y.tag).join(',') : '-'} mensagens=${n}`);
-      } catch (e) { console.log('  fetch erro:', e.message); }
+        console.log(`  ${nomeT}: tag=${r?.tag} filhos=${Array.isArray(r?.content) ? r.content.map((y) => y.tag + '(' + (Array.isArray(y.content) ? y.content.length : 0) + ')').join(',') : '-'} mensagens=${n}`);
+      } catch (e) { console.log(`  ${nomeT} erro: ${e.message}`); }
     }
   }
-  console.log('\nOuvindo ao vivo por 90s...');
-  await esperar(90_000);
+  console.log('\nOuvindo ao vivo por 20s...');
+  await esperar(20_000);
   console.log(`Ao vivo recebidas: ${aoVivo}`);
 } finally {
   await desconectar(sock);
